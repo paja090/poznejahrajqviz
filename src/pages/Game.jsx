@@ -17,15 +17,13 @@ export default function Game() {
   const [question, setQuestion] = useState(null);
   const [answered, setAnswered] = useState(false);
 
-  // 🌟 FÁZE 7: výsledek kola
   const [lastQuestionId, setLastQuestionId] = useState(null);
   const [result, setResult] = useState(null);
 
-  // 🌟 FÁZE 8: scoreboard
   const [players, setPlayers] = useState([]);
   const [showScoreboard, setShowScoreboard] = useState(false);
 
-  // === 🔥 1) posloucháme na změnu currentQuestionId ===
+  // === Poslech místnosti ===
   useEffect(() => {
     const roomRef = doc(db, "quizRooms", roomCode);
 
@@ -46,7 +44,7 @@ export default function Game() {
     return () => unsub();
   }, [roomCode]);
 
-  // === 🔥 2) načteme aktuální otázku ===
+  // === Načtení otázky ===
   useEffect(() => {
     if (!currentQuestionId) return;
 
@@ -65,23 +63,21 @@ export default function Game() {
     });
   }, [currentQuestionId, roomCode]);
 
-  // === 🔥 3) když currentQuestionId zmizí → zobrazit výsledek ===
+  // === Konec otázky → výsledek ===
   useEffect(() => {
     if (currentQuestionId === null && lastQuestionId) {
       showResult();
     }
   }, [currentQuestionId]);
 
-  // === 🌟 Funkce pro zobrazení výsledku kola ===
+  // === Zobrazení výsledku ===
   const showResult = async () => {
     if (!lastQuestionId) return;
 
-    // 1) otázka
     const qRef = doc(db, "quizRooms", roomCode, "questions", lastQuestionId);
     const qSnap = await getDoc(qRef);
     const qData = qSnap.data();
 
-    // 2) hráčova odpověď
     const ansRef = doc(
       db,
       "quizRooms",
@@ -92,36 +88,26 @@ export default function Game() {
     const ansSnap = await getDoc(ansRef);
     const ansData = ansSnap.data();
 
-    let isCorrect = false;
+    const isCorrect = ansData?.answer === qData.correctAnswer;
 
-    if (!ansData) {
-      isCorrect = false;
-    } else {
-      isCorrect = ansData.answer === qData.correctAnswer;
-    }
-
-    // Nastavit výsledek
     setResult({
       isCorrect,
       correctAnswer: qData.correctAnswer,
     });
 
-    // 4s → scoreboard
     setTimeout(() => {
       setResult(null);
       loadScoreboard();
       setShowScoreboard(true);
 
-      // 5s → zpět do čekání
       setTimeout(() => {
         setShowScoreboard(false);
         setQuestion(null);
       }, 5000);
-
     }, 4000);
   };
 
-  // === 🌟 Realtime scoreboard ===
+  // === Scoreboard ===
   const loadScoreboard = () => {
     const playersRef = collection(db, "quizRooms", roomCode, "players");
 
@@ -131,14 +117,13 @@ export default function Game() {
         ...d.data()
       }));
 
-      // seřadit podle score (desc)
       playersList.sort((a, b) => (b.score || 0) - (a.score || 0));
 
       setPlayers(playersList);
     });
   };
 
-  // === 🔥 4) odeslání odpovědi ===
+  // === Odeslání odpovědi ===
   const sendAnswer = async (index) => {
     if (answered) return;
 
@@ -161,109 +146,172 @@ export default function Game() {
     );
   };
 
-  // === 🌟 UI: Výsledek kola ===
+  // === UI: Výsledek ===
   if (result) {
     return (
-      <div style={{ padding: 40, textAlign: "center" }}>
-        {result.isCorrect ? (
-          <h1 style={{ color: "lime", fontSize: 40 }}>✔ Správně!</h1>
-        ) : (
-          <h1 style={{ color: "red", fontSize: 40 }}>✘ Špatně!</h1>
-        )}
+      <div style={styles.container}>
+        <div style={styles.resultBox}>
+          {result.isCorrect ? (
+            <h1 style={styles.correct}>✔ Správně!</h1>
+          ) : (
+            <h1 style={styles.wrong}>✘ Špatně!</h1>
+          )}
 
-        <p style={{ marginTop: 20 }}>
-          Správná odpověď byla:{" "}
-          <strong style={{ fontSize: 24 }}>
-            {["A", "B", "C"][result.correctAnswer]}
-          </strong>
-        </p>
+          <p style={styles.correctAnswer}>
+            Správná odpověď:{" "}
+            <span style={{ fontSize: 30 }}>
+              {["A", "B", "C"][result.correctAnswer]}
+            </span>
+          </p>
 
-        <p style={{ marginTop: 40, opacity: 0.7 }}>
-          Čekej na žebříček…
-        </p>
+          <p style={styles.sub}>Čekej na žebříček…</p>
+        </div>
       </div>
     );
   }
 
-  // === 🌟 UI: Scoreboard ===
+  // === UI: Scoreboard ===
   if (showScoreboard) {
     return (
-      <div style={{ padding: 40, textAlign: "center" }}>
-        <h1 style={{ fontSize: 32, marginBottom: 20 }}>📊 Žebříček</h1>
+      <div style={styles.container}>
+        <h1 style={styles.title}>📊 Žebříček</h1>
 
-        <ul style={{ listStyle: "none", padding: 0 }}>
+        <div style={styles.scoreboardBox}>
           {players.map((p, index) => (
-            <li
-              key={p.id}
-              style={{
-                background: "rgba(255,255,255,0.1)",
-                padding: "10px 20px",
-                borderRadius: 12,
-                marginBottom: 10,
-                textAlign: "left",
-                fontSize: 20,
-              }}
-            >
-              <strong>{index + 1}. {p.name}</strong>
-              <span style={{ float: "right", fontWeight: 700 }}>
-                {p.score ?? 0} b.
-              </span>
-            </li>
+            <div key={p.id} style={styles.scoreRow}>
+              <span>{index + 1}. {p.name}</span>
+              <strong>{p.score ?? 0} b.</strong>
+            </div>
           ))}
-        </ul>
+        </div>
 
-        <p style={{ marginTop: 20, opacity: 0.7 }}>
-          Další otázka začne za chvíli…
-        </p>
+        <p style={styles.sub}>Další otázka začne za chvíli…</p>
       </div>
     );
   }
 
-  // === 🌟 UI: Hlavní herní obrazovka ===
+  // === UI: Hra ===
   return (
-    <div style={{ padding: 40 }}>
-      <h1>Hra – místnost {roomCode}</h1>
+    <div style={styles.container}>
+      <h1 style={styles.title}>Místnost {roomCode}</h1>
 
       {!currentQuestionId && !question && (
-        <p>Čekáme na další otázku…</p>
+        <p style={styles.sub}>Čekáme na další otázku…</p>
       )}
 
       {question && (
         <>
-          <h2 style={{ marginTop: 20 }}>{question.title}</h2>
+          <h2 style={styles.question}>{question.title}</h2>
 
           {question.options.map((opt, idx) => (
             <button
               key={idx}
               onClick={() => sendAnswer(idx)}
-              style={{
-                display: "block",
-                marginTop: 15,
-                padding: "15px 20px",
-                width: 300,
-                background: answered
-                  ? "gray"
-                  : "linear-gradient(45deg,#8b5cf6,#ec4899,#00e5a8)",
-                color: "#071022",
-                borderRadius: 12,
-                fontSize: 18,
-                fontWeight: 600,
-              }}
               disabled={answered}
+              style={{
+                ...styles.answerBtn,
+                opacity: answered ? 0.5 : 1,
+              }}
             >
               {["A", "B", "C"][idx]} – {opt}
             </button>
           ))}
 
           {answered && (
-            <p style={{ marginTop: 20, color: "lime" }}>
-              Odpověď odeslána! ✔
-            </p>
+            <p style={styles.sent}>Odpověď odeslána! ✔</p>
           )}
         </>
       )}
     </div>
   );
 }
+
+// === Styling ===
+const styles = {
+  container: {
+    padding: "20px",
+    maxWidth: 400,
+    margin: "0 auto",
+    textAlign: "center",
+    fontFamily: "Inter, sans-serif",
+    color: "white",
+  },
+
+  title: {
+    fontSize: 26,
+    marginBottom: 20,
+    fontWeight: 700,
+    background: "linear-gradient(45deg,#a855f7,#ec4899,#00e5a8)",
+    WebkitBackgroundClip: "text",
+    color: "transparent",
+  },
+
+  question: {
+    fontSize: 22,
+    marginBottom: 20,
+  },
+
+  answerBtn: {
+    background: "linear-gradient(45deg,#a855f7,#ec4899,#00e5a8)",
+    boxShadow: "0 0 15px rgba(236,72,153,0.5)",
+    borderRadius: 14,
+    padding: "14px 20px",
+    marginBottom: 12,
+    width: "100%",
+    color: "#071022",
+    fontSize: 18,
+    fontWeight: 700,
+    border: "none",
+    cursor: "pointer",
+  },
+
+  sent: {
+    color: "lime",
+    marginTop: 10,
+    fontSize: 18,
+  },
+
+  resultBox: {
+    marginTop: 60,
+  },
+
+  correct: {
+    fontSize: 40,
+    color: "lime",
+    textShadow: "0 0 20px lime",
+  },
+
+  wrong: {
+    fontSize: 40,
+    color: "red",
+    textShadow: "0 0 20px red",
+  },
+
+  correctAnswer: {
+    marginTop: 20,
+    fontSize: 22,
+  },
+
+  sub: {
+    marginTop: 25,
+    opacity: 0.7,
+  },
+
+  scoreboardBox: {
+    marginTop: 20,
+    padding: 10,
+  },
+
+  scoreRow: {
+    background: "rgba(255,255,255,0.08)",
+    padding: "10px 14px",
+    borderRadius: 12,
+    marginBottom: 10,
+    fontSize: 18,
+    display: "flex",
+    justifyContent: "space-between",
+  },
+};
+
 
 
