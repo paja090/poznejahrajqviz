@@ -7,6 +7,7 @@ import {
   onSnapshot,
   setDoc,
   serverTimestamp,
+  collection
 } from "firebase/firestore";
 
 export default function Game() {
@@ -16,11 +17,15 @@ export default function Game() {
   const [question, setQuestion] = useState(null);
   const [answered, setAnswered] = useState(false);
 
-  // 🌟 pro FÁZI 7:
-  const [lastQuestionId, setLastQuestionId] = useState(null); 
-  const [result, setResult] = useState(null); // true/false + správná odpověď
+  // 🌟 FÁZE 7: výsledek kola
+  const [lastQuestionId, setLastQuestionId] = useState(null);
+  const [result, setResult] = useState(null);
 
-  // 1️⃣ posloucháme na změnu currentQuestionId
+  // 🌟 FÁZE 8: scoreboard
+  const [players, setPlayers] = useState([]);
+  const [showScoreboard, setShowScoreboard] = useState(false);
+
+  // === 🔥 1) posloucháme na změnu currentQuestionId ===
   useEffect(() => {
     const roomRef = doc(db, "quizRooms", roomCode);
 
@@ -30,20 +35,18 @@ export default function Game() {
 
       setCurrentQuestionId(data.currentQuestionId);
 
-      // Uložíme poslední otázku, když nějaká existuje
       if (data.currentQuestionId) {
         setLastQuestionId(data.currentQuestionId);
       }
 
-      // reset uzamknutí tlačítek při nové otázce
       setAnswered(false);
-      setResult(null); // reset výsledku při nové otázce
+      setResult(null);
     });
 
     return () => unsub();
   }, [roomCode]);
 
-  // 2️⃣ načteme samotnou otázku, když se změní ID
+  // === 🔥 2) načteme aktuální otázku ===
   useEffect(() => {
     if (!currentQuestionId) return;
 
@@ -62,24 +65,23 @@ export default function Game() {
     });
   }, [currentQuestionId, roomCode]);
 
-  // 🌟 3️⃣ Když otázka skončí (currentQuestionId = null) → zobrazíme výsledek
+  // === 🔥 3) když currentQuestionId zmizí → zobrazit výsledek ===
   useEffect(() => {
     if (currentQuestionId === null && lastQuestionId) {
       showResult();
     }
   }, [currentQuestionId]);
 
-  // 🌟 Funkce pro zobrazení výsledku kol
+  // === 🌟 Funkce pro zobrazení výsledku kola ===
   const showResult = async () => {
-    // Pokud ještě nemáme uloženou ID poslední otázky, nic nedělat
     if (!lastQuestionId) return;
 
-    // 1) načíst poslední otázku
+    // 1) otázka
     const qRef = doc(db, "quizRooms", roomCode, "questions", lastQuestionId);
     const qSnap = await getDoc(qRef);
     const qData = qSnap.data();
 
-    // 2) načíst odpověď hráče
+    // 2) hráčova odpověď
     const ansRef = doc(
       db,
       "quizRooms",
@@ -90,29 +92,53 @@ export default function Game() {
     const ansSnap = await getDoc(ansRef);
     const ansData = ansSnap.data();
 
-    if (!ansData) {
-      // hráč vůbec neodpověděl
-      setResult({
-        isCorrect: false,
-        correctAnswer: qData.correctAnswer,
-      });
-    } else {
-      const isCorrect = ansData.answer === qData.correctAnswer;
+    let isCorrect = false;
 
-      setResult({
-        isCorrect,
-        correctAnswer: qData.correctAnswer,
-      });
+    if (!ansData) {
+      isCorrect = false;
+    } else {
+      isCorrect = ansData.answer === qData.correctAnswer;
     }
 
-    // 3) výsledek zobrazíme 4 sekundy → pak zpět čekání
+    // Nastavit výsledek
+    setResult({
+      isCorrect,
+      correctAnswer: qData.correctAnswer,
+    });
+
+    // 4s → scoreboard
     setTimeout(() => {
-      setResult(null); // skryj výsledek
-      setQuestion(null); // smaž starou otázku
+      setResult(null);
+      loadScoreboard();
+      setShowScoreboard(true);
+
+      // 5s → zpět do čekání
+      setTimeout(() => {
+        setShowScoreboard(false);
+        setQuestion(null);
+      }, 5000);
+
     }, 4000);
   };
 
-  // 4️⃣ odeslání odpovědi
+  // === 🌟 Realtime scoreboard ===
+  const loadScoreboard = () => {
+    const playersRef = collection(db, "quizRooms", roomCode, "players");
+
+    return onSnapshot(playersRef, (snap) => {
+      const playersList = snap.docs.map((d) => ({
+        id: d.id,
+        ...d.data()
+      }));
+
+      // seřadit podle score (desc)
+      playersList.sort((a, b) => (b.score || 0) - (a.score || 0));
+
+      setPlayers(playersList);
+    });
+  };
+
+  // === 🔥 4) odeslání odpovědi ===
   const sendAnswer = async (index) => {
     if (answered) return;
 
@@ -135,7 +161,7 @@ export default function Game() {
     );
   };
 
-  // 🌟 UI pro výsledek po kole
+  // === 🌟 UI: Výsledek kola ===
   if (result) {
     return (
       <div style={{ padding: 40, textAlign: "center" }}>
@@ -152,11 +178,48 @@ export default function Game() {
           </strong>
         </p>
 
-        <p style={{ marginTop: 40, opacity: 0.7 }}>Čekej na další otázku…</p>
+        <p style={{ marginTop: 40, opacity: 0.7 }}>
+          Čekej na žebříček…
+        </p>
       </div>
     );
   }
 
+  // === 🌟 UI: Scoreboard ===
+  if (showScoreboard) {
+    return (
+      <div style={{ padding: 40, textAlign: "center" }}>
+        <h1 style={{ fontSize: 32, marginBottom: 20 }}>📊 Žebříček</h1>
+
+        <ul style={{ listStyle: "none", padding: 0 }}>
+          {players.map((p, index) => (
+            <li
+              key={p.id}
+              style={{
+                background: "rgba(255,255,255,0.1)",
+                padding: "10px 20px",
+                borderRadius: 12,
+                marginBottom: 10,
+                textAlign: "left",
+                fontSize: 20,
+              }}
+            >
+              <strong>{index + 1}. {p.name}</strong>
+              <span style={{ float: "right", fontWeight: 700 }}>
+                {p.score ?? 0} b.
+              </span>
+            </li>
+          ))}
+        </ul>
+
+        <p style={{ marginTop: 20, opacity: 0.7 }}>
+          Další otázka začne za chvíli…
+        </p>
+      </div>
+    );
+  }
+
+  // === 🌟 UI: Hlavní herní obrazovka ===
   return (
     <div style={{ padding: 40 }}>
       <h1>Hra – místnost {roomCode}</h1>
@@ -202,4 +265,5 @@ export default function Game() {
     </div>
   );
 }
+
 
