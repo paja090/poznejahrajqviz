@@ -8,7 +8,10 @@ import {
   query,
   orderBy,
   doc,
-  setDoc
+  setDoc,
+  getDocs,
+  getDoc,
+  updateDoc
 } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 
@@ -69,6 +72,50 @@ export default function Questions() {
     );
 
     alert("Otázka spuštěna!");
+  };
+
+  // 🔥 Moderátor: vyhodnotit otázku
+  const evaluateQuestion = async (questionId) => {
+    // 1) načíst otázku
+    const qRef = doc(db, "quizRooms", roomCode, "questions", questionId);
+    const qSnap = await getDoc(qRef);
+    const question = qSnap.data();
+    const correctAnswer = question.correctAnswer;
+
+    // 2) načíst všechny odpovědi
+    const answersRef = collection(db, "quizRooms", roomCode, "answers");
+    const answersSnap = await getDocs(answersRef);
+
+    // 3) procházení odpovědí
+    for (const a of answersSnap.docs) {
+      const data = a.data();
+
+      if (data.questionId !== questionId) continue; // ignoruj jiné otázky
+
+      const playerRef = doc(
+        db,
+        "quizRooms",
+        roomCode,
+        "players",
+        data.playerId
+      );
+
+      // 4) pokud hráč odpověděl správně → přidat bod
+      if (data.answer === correctAnswer) {
+        await updateDoc(playerRef, {
+          score: (data.score || 0) + 1
+        });
+      }
+    }
+
+    // 5) ukončit otázku (hráči čekají)
+    await setDoc(
+      doc(db, "quizRooms", roomCode),
+      { currentQuestionId: null },
+      { merge: true }
+    );
+
+    alert("Otázka vyhodnocena!");
   };
 
   return (
@@ -151,10 +198,28 @@ export default function Questions() {
                 border: "none",
                 borderRadius: 10,
                 fontWeight: 600,
-                cursor: "pointer"
+                cursor: "pointer",
+                color: "#071022",
               }}
             >
               ▶ Spustit tuto otázku
+            </button>
+
+            {/* 🔥 Vyhodnotit otázku */}
+            <button
+              onClick={() => evaluateQuestion(q.id)}
+              style={{
+                marginTop: 8,
+                padding: "8px 14px",
+                background: "linear-gradient(45deg,#00e5a8,#8b5cf6)",
+                border: "none",
+                borderRadius: 10,
+                fontWeight: 600,
+                cursor: "pointer",
+                color: "#071022",
+              }}
+            >
+              ✔ Vyhodnotit
             </button>
           </li>
         ))}
@@ -162,5 +227,6 @@ export default function Questions() {
     </div>
   );
 }
+
 
 
