@@ -5,44 +5,47 @@ export default function Home() {
     <div
       style={{
         minHeight: "100vh",
-        background: "#071022",
+        background: "#020617",
         color: "white",
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        padding: 40,
-        textAlign: "center"
+        padding: 24,
+        textAlign: "center",
       }}
     >
-      <div style={{ maxWidth: 400 }}>
+      <div style={{ maxWidth: 420 }}>
         <h1
           style={{
-            fontSize: 36,
-            marginBottom: 20,
+            fontSize: 34,
+            marginBottom: 18,
             fontWeight: 800,
-            background: "linear-gradient(45deg,#8b5cf6,#ec4899,#00e5a8)",
+            background:
+              "linear-gradient(45deg,#a855f7,#ec4899,#00e5a8)",
             WebkitBackgroundClip: "text",
-            color: "transparent"
+            color: "transparent",
           }}
         >
           Poznej & Hraj – Quiz App
         </h1>
 
-        <p style={{ marginBottom: 40, opacity: 0.7 }}>
-          Připoj se ke hře nebo vytvoř novou místnost.
+        <p style={{ marginBottom: 34, opacity: 0.75, fontSize: 15 }}>
+          Vytvoř místnost, přidej otázky a zahrajte si živý kvíz jako Kahoot.
         </p>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <Link
             to="/create"
             style={{
-              padding: "15px 25px",
-              background: "linear-gradient(45deg,#8b5cf6,#ec4899,#00e5a8)",
-              borderRadius: 12,
+              padding: "14px 22px",
+              background:
+                "linear-gradient(45deg,#a855f7,#ec4899,#00e5a8)",
+              borderRadius: 999,
               textDecoration: "none",
               fontSize: 18,
               fontWeight: 600,
-              color: "#071022"
+              color: "#020617",
+              boxShadow: "0 0 20px rgba(236,72,153,0.6)",
             }}
           >
             🎮 Vytvořit místnost
@@ -51,14 +54,14 @@ export default function Home() {
           <Link
             to="/join"
             style={{
-              padding: "15px 25px",
-              background: "rgba(255,255,255,0.12)",
-              borderRadius: 12,
+              padding: "14px 22px",
+              background: "rgba(15,23,42,0.9)",
+              borderRadius: 999,
               textDecoration: "none",
-              fontSize: 18,
+              fontSize: 16,
               fontWeight: 600,
-              border: "1px solid rgba(255,255,255,0.2)",
-              color: "white"
+              border: "1px solid rgba(148,163,184,0.5)",
+              color: "white",
             }}
           >
             🔑 Připojit se ke hře
@@ -68,4 +71,5 @@ export default function Home() {
     </div>
   );
 }
+
 
