@@ -6,7 +6,9 @@ import {
   onSnapshot,
   serverTimestamp,
   query,
-  orderBy
+  orderBy,
+  doc,
+  setDoc
 } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 
@@ -56,6 +58,19 @@ export default function Questions() {
     setCorrect("0");
   };
 
+  // 🔥 Moderátor: spustí otázku → hráči ji uvidí
+  const startQuestion = async (questionId) => {
+    await setDoc(
+      doc(db, "quizRooms", roomCode),
+      {
+        currentQuestionId: questionId
+      },
+      { merge: true }
+    );
+
+    alert("Otázka spuštěna!");
+  };
+
   return (
     <div style={{ padding: 40, maxWidth: 600 }}>
       <h1>Otázky pro místnost {roomCode}</h1>
@@ -103,7 +118,10 @@ export default function Questions() {
         <option value="2">C</option>
       </select>
 
-      <button onClick={addQuestion} style={{ padding: 10, width: 200 }}>
+      <button
+        onClick={addQuestion}
+        style={{ padding: 10, width: 200 }}
+      >
         ➕ Přidat otázku
       </button>
 
@@ -122,10 +140,27 @@ export default function Questions() {
             <div style={{ color: "lime", marginTop: 5 }}>
               ✔ Správná odpověď: {["A", "B", "C"][q.correctAnswer]}
             </div>
+
+            {/* 🔥 Spustit otázku */}
+            <button
+              onClick={() => startQuestion(q.id)}
+              style={{
+                marginTop: 10,
+                padding: "8px 14px",
+                background: "linear-gradient(45deg,#8b5cf6,#ec4899,#00e5a8)",
+                border: "none",
+                borderRadius: 10,
+                fontWeight: 600,
+                cursor: "pointer"
+              }}
+            >
+              ▶ Spustit tuto otázku
+            </button>
           </li>
         ))}
       </ul>
     </div>
   );
 }
+
 
