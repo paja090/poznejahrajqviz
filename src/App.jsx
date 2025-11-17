@@ -5,6 +5,7 @@ import JoinRoom from "./pages/JoinRoom";
 import Lobby from "./pages/Lobby";
 import Questions from "./pages/Questions";
 import Game from "./pages/Game";
+import Scoreboard from "./pages/Scoreboard";
 
 
 export default function App() {
@@ -17,6 +18,7 @@ export default function App() {
         <Route path="/lobby/:roomCode" element={<Lobby />} />
         <Route path="/host/:roomCode/questions" element={<Questions />} />
         <Route path="/game/:roomCode/:playerId" element={<Game />} />
+        <Route path="/scoreboard/:roomCode" element={<Scoreboard />} />
      </Routes>
     </BrowserRouter>
   );
