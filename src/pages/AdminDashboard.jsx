@@ -23,7 +23,7 @@ export default function AdminDashboard() {
   const [isCountingDown, setIsCountingDown] = useState(false);
   const [countdownValue, setCountdownValue] = useState(3);
 
-  // === Načtení otázek ===
+  // otázky
   useEffect(() => {
     const q = query(
       collection(db, "quizRooms", roomCode, "questions"),
@@ -35,7 +35,7 @@ export default function AdminDashboard() {
     });
   }, [roomCode]);
 
-  // === Načtení stavu místnosti (status + currentQuestionId) ===
+  // stav místnosti
   useEffect(() => {
     const roomRef = doc(db, "quizRooms", roomCode);
     return onSnapshot(roomRef, (snap) => {
@@ -46,7 +46,7 @@ export default function AdminDashboard() {
     });
   }, [roomCode]);
 
-  // === Načtení hráčů ===
+  // hráči
   useEffect(() => {
     const pRef = collection(db, "quizRooms", roomCode, "players");
     return onSnapshot(pRef, (snap) => {
@@ -54,7 +54,7 @@ export default function AdminDashboard() {
     });
   }, [roomCode]);
 
-  // === Počet odpovědí na AKTUÁLNÍ otázku ===
+  // počet odpovědí
   useEffect(() => {
     if (!currentQuestionId) {
       setAnswersCount(0);
@@ -77,7 +77,7 @@ export default function AdminDashboard() {
     (p) => !answeredPlayerIds.includes(p.id)
   );
 
-  // === Spustit KONKRÉTNÍ otázku ===
+  // spustit konkrétní otázku
   const startQuestion = async (id) => {
     await setDoc(
       doc(db, "quizRooms", roomCode),
@@ -86,7 +86,7 @@ export default function AdminDashboard() {
     );
   };
 
-  // === 10.1 START HRY + odpočet 3–2–1 → první otázka ===
+  // start hry + odpočet
   const startGameWithCountdown = () => {
     if (!questions.length) {
       alert("Nejsou připravené žádné otázky.");
@@ -102,7 +102,6 @@ export default function AdminDashboard() {
       if (value <= 0) {
         clearInterval(interval);
         setIsCountingDown(false);
-        // spustit první otázku
         startQuestion(questions[0].id);
       } else {
         setCountdownValue(value);
@@ -110,7 +109,7 @@ export default function AdminDashboard() {
     }, 1000);
   };
 
-  // === 10.2 PAUZA / POKRAČOVAT ===
+  // pauza / pokračovat
   const togglePause = async () => {
     const newStatus = status === "paused" ? "running" : "paused";
     await setDoc(
@@ -120,7 +119,7 @@ export default function AdminDashboard() {
     );
   };
 
-  // === 10.3 UKONČIT HRU ===
+  // ukončit hru
   const endGame = async () => {
     await setDoc(
       doc(db, "quizRooms", roomCode),
@@ -130,11 +129,10 @@ export default function AdminDashboard() {
     alert("Hra ukončena.");
   };
 
-  // === Další otázka (podle pořadí) ===
+  // další otázka
   const startNextQuestion = () => {
     if (!questions.length) return;
 
-    // pokud ještě žádná neběží → start první
     if (!currentQuestionId) {
       startQuestion(questions[0].id);
       return;
@@ -158,141 +156,189 @@ export default function AdminDashboard() {
   }[status] || status;
 
   return (
-    <div style={styles.container}>
-      <h1 style={styles.title}>Moderátor – Místnost {roomCode}</h1>
+    <div style={styles.page}>
+      <div style={styles.container}>
+        <h1 style={styles.title}>Moderátor – Místnost {roomCode}</h1>
 
-      {/* Stav hry */}
-      <div style={styles.section}>
-        <h2 style={styles.header}>Stav hry</h2>
-        <p style={styles.statusPill}>{statusLabel}</p>
+        <p style={styles.subHeader}>
+          Odtud řídíš hru: start, pauza, další otázky i žebříček.
+        </p>
 
-        {isCountingDown && (
-          <div style={styles.countdownBox}>
-            <div style={styles.countdownNumber}>{countdownValue}</div>
-            <p style={styles.sub}>
-              Připravte se… hra se spustí!
-            </p>
-          </div>
-        )}
+        <Link
+          to={`/host/${roomCode}/questions`}
+          style={styles.linkQuestions}
+        >
+          ➕ Správa a přidávání otázek
+        </Link>
 
-        {!isCountingDown && status !== "finished" && (
-          <div style={styles.btnCol}>
-            <button style={styles.btnPrimary} onClick={startGameWithCountdown}>
-              🚀 Start hry (3…2…1)
-            </button>
+        {/* Stav hry */}
+        <div style={styles.section}>
+          <h2 style={styles.header}>Stav hry</h2>
+          <p style={styles.statusPill}>{statusLabel}</p>
 
-            <button style={styles.btnNext} onClick={startNextQuestion}>
-              ⏭ Další otázka
-            </button>
-
-            <button style={styles.btnPause} onClick={togglePause}>
-              {status === "paused" ? "▶ Pokračovat" : "⏸ Pozastavit hru"}
-            </button>
-
-            <button style={styles.btnEnd} onClick={endGame}>
-              🛑 Ukončit hru
-            </button>
-
-            <Link to={`/scoreboard/${roomCode}`} style={styles.btnScore}>
-              📊 Zobrazit žebříček
-            </Link>
-          </div>
-        )}
-
-        {status === "finished" && (
-          <p style={styles.sub}>
-            Hra je ukončena. Můžeš vytvořit novou místnost pro další kolo.
-          </p>
-        )}
-      </div>
-
-      {/* Hráči */}
-      <div style={styles.section}>
-        <h2 style={styles.header}>Hráči ({players.length})</h2>
-        <ul style={{ margin: 0, paddingLeft: 16 }}>
-          {players.map((p) => (
-            <li key={p.id} style={styles.player}>
-              {p.name} – {p.score ?? 0} b.
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      {/* Otázky */}
-      <div style={styles.section}>
-        <h2 style={styles.header}>Otázky</h2>
-
-        {questions.map((q, index) => {
-          const isActive = currentQuestionId === q.id;
-          return (
-            <div
-              key={q.id}
-              style={{
-                ...styles.questionBox,
-                border: isActive
-                  ? "1px solid rgba(16, 185, 129, 0.8)"
-                  : "1px solid transparent",
-              }}
-            >
-              <strong>
-                {index + 1}. {q.title}
-              </strong>
-
-              <div style={styles.smallOptions}>
-                <div>A: {q.options[0]}</div>
-                <div>B: {q.options[1]}</div>
-                <div>C: {q.options[2]}</div>
-              </div>
-
-              {isActive && (
-                <>
-                  <p style={{ color: "#00e5a8", marginTop: 8 }}>
-                    ▶ Aktuální otázka – odpovědělo: {answersCount}/
-                    {players.length}
-                  </p>
-
-                  {/* 10.4 – hráči, kteří ještě neodpověděli */}
-                  {unansweredPlayers.length > 0 && (
-                    <div style={styles.unansweredBox}>
-                      <div style={{ fontWeight: 600, marginBottom: 4 }}>
-                        Neodpověděli:
-                      </div>
-                      <div style={styles.unansweredList}>
-                        {unansweredPlayers.map((p) => p.name).join(", ")}
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
-
-              <div style={styles.btnRow}>
-                <button
-                  style={styles.btnStartQ}
-                  onClick={() => startQuestion(q.id)}
-                >
-                  ▶ Spustit tuto otázku
-                </button>
-              </div>
+          {isCountingDown && (
+            <div style={styles.countdownBox}>
+              <div style={styles.countdownNumber}>{countdownValue}</div>
+              <p style={styles.sub}>Připravte se… hra se spustí!</p>
             </div>
-          );
-        })}
-      </div>
+          )}
 
-      <div style={styles.footerNote}>
-        Tip: Vyhodnocení správných odpovědí používáš v obrazovce „Otázky“
-        (Questions) – ať se logika neduplikuje.
+          {!isCountingDown && status !== "finished" && (
+            <div style={styles.btnCol}>
+              <button
+                style={styles.btnPrimary}
+                onClick={startGameWithCountdown}
+              >
+                🚀 Start hry (3…2…1)
+              </button>
+
+              <button style={styles.btnNext} onClick={startNextQuestion}>
+                ⏭ Další otázka
+              </button>
+
+              <button style={styles.btnPause} onClick={togglePause}>
+                {status === "paused" ? "▶ Pokračovat" : "⏸ Pozastavit hru"}
+              </button>
+
+              <button style={styles.btnEnd} onClick={endGame}>
+                🛑 Ukončit hru
+              </button>
+
+              <Link to={`/scoreboard/${roomCode}`} style={styles.btnScore}>
+                📊 Zobrazit žebříček
+              </Link>
+            </div>
+          )}
+
+          {status === "finished" && (
+            <p style={styles.sub}>
+              Hra je ukončena. Můžeš vytvořit novou místnost pro další kolo.
+            </p>
+          )}
+        </div>
+
+        {/* Hráči */}
+        <div style={styles.section}>
+          <h2 style={styles.header}>Hráči ({players.length})</h2>
+          <ul style={{ margin: 0, paddingLeft: 16 }}>
+            {players.map((p) => (
+              <li key={p.id} style={styles.player}>
+                {p.name} – {p.score ?? 0} b.
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Otázky */}
+        <div style={styles.section}>
+          <h2 style={styles.header}>Otázky</h2>
+
+          {questions.map((q, index) => {
+            const isActive = currentQuestionId === q.id;
+            return (
+              <div
+                key={q.id}
+                style={{
+                  ...styles.questionBox,
+                  border: isActive
+                    ? "1px solid rgba(16, 185, 129, 0.8)"
+                    : "1px solid transparent",
+                }}
+              >
+                <strong>
+                  {index + 1}. {q.title}
+                </strong>
+
+                <div style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }}>
+                  Typ: {q.type === "abc"
+                    ? "ABC"
+                    : q.type === "open"
+                    ? "Otevřená"
+                    : "Rychlostní"}
+                </div>
+
+                {q.type === "abc" && q.options && (
+                  <div style={styles.smallOptions}>
+                    <div>A: {q.options[0]}</div>
+                    <div>B: {q.options[1]}</div>
+                    <div>C: {q.options[2]}</div>
+                  </div>
+                )}
+
+                {q.type === "open" && (
+                  <div style={styles.smallOptions}>
+                    Správná odpověď: {q.correctAnswer}
+                  </div>
+                )}
+
+                {q.type === "speed" && (
+                  <div style={styles.smallOptions}>
+                    ⚡ Bod získá nejrychlejší odpověď.
+                  </div>
+                )}
+
+                {isActive && (
+                  <>
+                    <p style={{ color: "#00e5a8", marginTop: 8 }}>
+                      ▶ Aktuální otázka – odpovědělo: {answersCount}/
+                      {players.length}
+                    </p>
+
+                    {unansweredPlayers.length > 0 && (
+                      <div style={styles.unansweredBox}>
+                        <div
+                          style={{ fontWeight: 600, marginBottom: 4 }}
+                        >
+                          Neodpověděli:
+                        </div>
+                        <div style={styles.unansweredList}>
+                          {unansweredPlayers
+                            .map((p) => p.name)
+                            .join(", ")}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                <div style={styles.btnRow}>
+                  <button
+                    style={styles.btnStartQ}
+                    onClick={() => startQuestion(q.id)}
+                  >
+                    ▶ Spustit tuto otázku
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+
+          {questions.length === 0 && (
+            <p style={{ fontSize: 13, opacity: 0.7 }}>
+              Zatím žádné otázky – přidej je v sekci „Otázky“.
+            </p>
+          )}
+        </div>
+
+        <div style={styles.footerNote}>
+          Tip: Pro podrobné vyhodnocení odpovědí (správně/špatně) použij
+          obrazovku „Otázky“, kde je logika vyhodnocování.
+        </div>
       </div>
     </div>
   );
 }
 
-// === STYLY ===
 const styles = {
-  container: {
-    padding: 20,
-    maxWidth: 650,
-    margin: "0 auto",
+  page: {
+    minHeight: "100vh",
+    background: "#020617",
     color: "white",
+    padding: 16,
+  },
+  container: {
+    maxWidth: 700,
+    margin: "0 auto",
     fontFamily: "Inter, system-ui, sans-serif",
   },
   title: {
@@ -302,47 +348,59 @@ const styles = {
     WebkitBackgroundClip: "text",
     color: "transparent",
     textAlign: "center",
-    marginBottom: 20,
+    marginBottom: 4,
+  },
+  subHeader: {
+    textAlign: "center",
+    fontSize: 13,
+    opacity: 0.7,
+    marginBottom: 10,
+  },
+  linkQuestions: {
+    display: "inline-block",
+    fontSize: 13,
+    marginBottom: 14,
+    color: "#a5b4fc",
   },
   section: {
-    marginBottom: 24,
-    background: "rgba(15,23,42,0.85)",
-    padding: 16,
+    marginBottom: 18,
+    background: "rgba(15,23,42,0.92)",
+    padding: 14,
     borderRadius: 14,
     boxShadow: "0 0 18px rgba(15,23,42,0.9)",
     border: "1px solid rgba(148,163,184,0.3)",
   },
   header: {
-    fontSize: 18,
-    marginBottom: 10,
+    fontSize: 17,
+    marginBottom: 8,
   },
   statusPill: {
     display: "inline-block",
     padding: "6px 12px",
     borderRadius: 999,
-    background: "rgba(148,163,184,0.15)",
-    fontSize: 14,
-    marginBottom: 10,
+    background: "rgba(148,163,184,0.18)",
+    fontSize: 13,
+    marginBottom: 8,
   },
   countdownBox: {
-    marginTop: 16,
+    marginTop: 10,
     textAlign: "center",
   },
   countdownNumber: {
-    fontSize: 42,
+    fontSize: 40,
     fontWeight: 800,
     textShadow: "0 0 20px rgba(236,72,153,0.9)",
   },
   sub: {
-    marginTop: 8,
+    marginTop: 6,
     opacity: 0.7,
-    fontSize: 14,
+    fontSize: 13,
   },
   btnCol: {
     display: "flex",
     flexDirection: "column",
     gap: 8,
-    marginTop: 12,
+    marginTop: 10,
   },
   btnPrimary: {
     width: "100%",
@@ -406,8 +464,8 @@ const styles = {
     fontSize: 14,
   },
   questionBox: {
-    background: "rgba(15,23,42,0.9)",
-    padding: 12,
+    background: "rgba(15,23,42,0.95)",
+    padding: 10,
     borderRadius: 12,
     marginBottom: 10,
   },
@@ -429,7 +487,7 @@ const styles = {
   btnRow: {
     display: "flex",
     gap: 8,
-    marginTop: 10,
+    marginTop: 8,
   },
   btnStartQ: {
     flex: 1,
