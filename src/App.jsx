@@ -4,7 +4,7 @@ import CreateRoom from "./pages/CreateRoom";
 import JoinRoom from "./pages/JoinRoom";
 import Lobby from "./pages/Lobby";
 import Questions from "./pages/Questions";
-
+import Game from "./pages/Game";
 
 
 export default function App() {
@@ -16,6 +16,7 @@ export default function App() {
         <Route path="/join" element={<JoinRoom />} />
         <Route path="/lobby/:roomCode" element={<Lobby />} />
         <Route path="/host/:roomCode/questions" element={<Questions />} />
+        <Route path="/game/:roomCode/:playerId" element={<Game />} />
      </Routes>
     </BrowserRouter>
   );
