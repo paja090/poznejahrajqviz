@@ -20,7 +20,7 @@ export default function Home() {
             fontSize: 36,
             marginBottom: 20,
             fontWeight: 800,
-            background: "linear-gradient(45deg, #8b5cf6, #ec4899, #00e5a8)",
+            background: "linear-gradient(45deg,#8b5cf6,#ec4899,#00e5a8)",
             WebkitBackgroundClip: "text",
             color: "transparent"
           }}
@@ -37,8 +37,7 @@ export default function Home() {
             to="/create"
             style={{
               padding: "15px 25px",
-              background:
-                "linear-gradient(45deg, #8b5cf6, #ec4899, #00e5a8)",
+              background: "linear-gradient(45deg,#8b5cf6,#ec4899,#00e5a8)",
               borderRadius: 12,
               textDecoration: "none",
               fontSize: 18,
@@ -69,3 +68,4 @@ export default function Home() {
     </div>
   );
 }
+
