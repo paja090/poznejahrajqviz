@@ -26,7 +26,7 @@ export default function Questions() {
 
   const [questions, setQuestions] = useState([]);
 
-  // 🔥 REALTIME načítání otázek
+  // === 🔥 REALTIME načítání otázek ===
   useEffect(() => {
     const q = query(
       collection(db, "quizRooms", roomCode, "questions"),
@@ -40,7 +40,7 @@ export default function Questions() {
     return () => unsub();
   }, [roomCode]);
 
-  // 🔥 Přidání otázky
+  // === ➕ Přidání otázky ===
   const addQuestion = async () => {
     if (!title || !optionA || !optionB || !optionC) return;
 
@@ -51,7 +51,7 @@ export default function Questions() {
       title,
       options,
       correctAnswer: Number(correct),
-      createdAt: serverTimestamp()
+      createdAt: serverTimestamp(),
     });
 
     setTitle("");
@@ -61,20 +61,18 @@ export default function Questions() {
     setCorrect("0");
   };
 
-  // 🔥 Moderátor: spustí otázku → hráči ji uvidí
+  // === ▶ Spustit otázku ===
   const startQuestion = async (questionId) => {
     await setDoc(
       doc(db, "quizRooms", roomCode),
-      {
-        currentQuestionId: questionId
-      },
+      { currentQuestionId: questionId },
       { merge: true }
     );
 
     alert("Otázka spuštěna!");
   };
 
-  // 🔥 Moderátor: vyhodnotit otázku
+  // === ✔ Vyhodnotit otázku ===
   const evaluateQuestion = async (questionId) => {
     // 1) načíst otázku
     const qRef = doc(db, "quizRooms", roomCode, "questions", questionId);
@@ -86,11 +84,11 @@ export default function Questions() {
     const answersRef = collection(db, "quizRooms", roomCode, "answers");
     const answersSnap = await getDocs(answersRef);
 
-    // 3) procházení odpovědí
+    // 3) projít odpovědi
     for (const a of answersSnap.docs) {
       const data = a.data();
 
-      if (data.questionId !== questionId) continue; // ignoruj jiné otázky
+      if (data.questionId !== questionId) continue;
 
       const playerRef = doc(
         db,
@@ -100,15 +98,15 @@ export default function Questions() {
         data.playerId
       );
 
-      // 4) pokud hráč odpověděl správně → přidat bod
+      // Pokud je správně → přidat bod
       if (data.answer === correctAnswer) {
         await updateDoc(playerRef, {
-          score: (data.score || 0) + 1
+          score: (data.score || 0) + 1,
         });
       }
     }
 
-    // 5) ukončit otázku (hráči čekají)
+    // 5) Po vyhodnocení → ukončit aktuální otázku
     await setDoc(
       doc(db, "quizRooms", roomCode),
       { currentQuestionId: null },
@@ -165,10 +163,7 @@ export default function Questions() {
         <option value="2">C</option>
       </select>
 
-      <button
-        onClick={addQuestion}
-        style={{ padding: 10, width: 200 }}
-      >
+      <button onClick={addQuestion} style={{ padding: 10, width: 200 }}>
         ➕ Přidat otázku
       </button>
 
@@ -179,7 +174,10 @@ export default function Questions() {
       <ul>
         {questions.map((q, index) => (
           <li key={q.id} style={{ marginBottom: 20 }}>
-            <strong>{index + 1}. {q.title}</strong>
+            <strong>
+              {index + 1}. {q.title}
+            </strong>
+
             <div>A: {q.options[0]}</div>
             <div>B: {q.options[1]}</div>
             <div>C: {q.options[2]}</div>
@@ -188,15 +186,14 @@ export default function Questions() {
               ✔ Správná odpověď: {["A", "B", "C"][q.correctAnswer]}
             </div>
 
-            {/* 🔥 Spustit otázku */}
             <button
               onClick={() => startQuestion(q.id)}
               style={{
                 marginTop: 10,
                 padding: "8px 14px",
                 background: "linear-gradient(45deg,#8b5cf6,#ec4899,#00e5a8)",
-                border: "none",
                 borderRadius: 10,
+                border: "none",
                 fontWeight: 600,
                 cursor: "pointer",
                 color: "#071022",
@@ -205,15 +202,14 @@ export default function Questions() {
               ▶ Spustit tuto otázku
             </button>
 
-            {/* 🔥 Vyhodnotit otázku */}
             <button
               onClick={() => evaluateQuestion(q.id)}
               style={{
                 marginTop: 8,
                 padding: "8px 14px",
                 background: "linear-gradient(45deg,#00e5a8,#8b5cf6)",
-                border: "none",
                 borderRadius: 10,
+                border: "none",
                 fontWeight: 600,
                 cursor: "pointer",
                 color: "#071022",
@@ -227,6 +223,7 @@ export default function Questions() {
     </div>
   );
 }
+
 
 
 
