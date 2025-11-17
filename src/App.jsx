@@ -3,6 +3,7 @@ import Home from "./pages/Home";
 import CreateRoom from "./pages/CreateRoom";
 import JoinRoom from "./pages/JoinRoom";
 import Lobby from "./pages/Lobby";
+import Questions from "./pages/Questions";
 
 export default function App() {
   return (
@@ -12,7 +13,8 @@ export default function App() {
         <Route path="/create" element={<CreateRoom />} />
         <Route path="/join" element={<JoinRoom />} />
         <Route path="/lobby/:roomCode" element={<Lobby />} />
-      </Routes>
+        <Route path="/host/:roomCode/questions" element={<Questions />} />
+     </Routes>
     </BrowserRouter>
   );
 }
