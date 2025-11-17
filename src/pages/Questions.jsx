@@ -18,9 +18,10 @@ export default function Questions() {
   const [optionB, setOptionB] = useState("");
   const [optionC, setOptionC] = useState("");
   const [correct, setCorrect] = useState("0");
+
   const [questions, setQuestions] = useState([]);
 
-  // Realtime získání otázek
+  // 🔥 REALTIME načítání otázek
   useEffect(() => {
     const q = query(
       collection(db, "quizRooms", roomCode, "questions"),
@@ -34,6 +35,7 @@ export default function Questions() {
     return () => unsub();
   }, [roomCode]);
 
+  // 🔥 Přidání otázky
   const addQuestion = async () => {
     if (!title || !optionA || !optionB || !optionC) return;
 
@@ -55,44 +57,46 @@ export default function Questions() {
   };
 
   return (
-    <div style={{ padding: 40 }}>
+    <div style={{ padding: 40, maxWidth: 600 }}>
       <h1>Otázky pro místnost {roomCode}</h1>
 
-      <h2 style={{ marginTop: 20 }}>Přidat ABC otázku</h2>
+      <hr style={{ margin: "20px 0", opacity: 0.2 }} />
 
-      <label>Název otázky:</label>
+      <h2>Přidat ABC otázku</h2>
+
+      <label>Text otázky:</label>
       <input
-        style={{ display: "block", marginBottom: 10, width: "100%" }}
         value={title}
         onChange={(e) => setTitle(e.target.value)}
+        style={{ width: "100%", marginBottom: 10 }}
       />
 
       <label>Možnost A:</label>
       <input
-        style={{ display: "block", marginBottom: 10, width: "100%" }}
         value={optionA}
         onChange={(e) => setOptionA(e.target.value)}
+        style={{ width: "100%", marginBottom: 10 }}
       />
 
       <label>Možnost B:</label>
       <input
-        style={{ display: "block", marginBottom: 10, width: "100%" }}
         value={optionB}
         onChange={(e) => setOptionB(e.target.value)}
+        style={{ width: "100%", marginBottom: 10 }}
       />
 
       <label>Možnost C:</label>
       <input
-        style={{ display: "block", marginBottom: 10, width: "100%" }}
         value={optionC}
         onChange={(e) => setOptionC(e.target.value)}
+        style={{ width: "100%", marginBottom: 10 }}
       />
 
       <label>Správná odpověď:</label>
       <select
         value={correct}
         onChange={(e) => setCorrect(e.target.value)}
-        style={{ display: "block", marginBottom: 20 }}
+        style={{ marginBottom: 20 }}
       >
         <option value="0">A</option>
         <option value="1">B</option>
@@ -103,17 +107,20 @@ export default function Questions() {
         ➕ Přidat otázku
       </button>
 
-      <h2 style={{ marginTop: 40 }}>Seznam otázek</h2>
+      <hr style={{ margin: "30px 0", opacity: 0.2 }} />
+
+      <h2>Seznam otázek</h2>
 
       <ul>
         {questions.map((q, index) => (
-          <li key={q.id} style={{ marginBottom: 15 }}>
+          <li key={q.id} style={{ marginBottom: 20 }}>
             <strong>{index + 1}. {q.title}</strong>
             <div>A: {q.options[0]}</div>
             <div>B: {q.options[1]}</div>
             <div>C: {q.options[2]}</div>
-            <div style={{ color: "lime" }}>
-              Správně: {["A", "B", "C"][q.correctAnswer]}
+
+            <div style={{ color: "lime", marginTop: 5 }}>
+              ✔ Správná odpověď: {["A", "B", "C"][q.correctAnswer]}
             </div>
           </li>
         ))}
@@ -121,3 +128,4 @@ export default function Questions() {
     </div>
   );
 }
+
