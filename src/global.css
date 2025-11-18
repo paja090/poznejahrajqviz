@@ -226,4 +226,81 @@ body {
     opacity: 0;
   }
 }
+/* FORM WRAPPER */
+.form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 10px;
+}
+
+/* LABEL */
+.form-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #e2e8f0;
+  margin-bottom: 4px;
+  display: block;
+}
+
+/* INPUT */
+.form-input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.82);
+  border: 1px solid rgba(148,163,184,0.4);
+  color: white;
+  font-size: 14px;
+  outline: none;
+  transition: 0.25s;
+}
+
+.form-input:focus {
+  border-color: #a855f7;
+  box-shadow: 0 0 8px rgba(168,85,247,0.5);
+}
+
+/* SELECT */
+.form-select {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.82);
+  border: 1px solid rgba(148,163,184,0.4);
+  color: white;
+  font-size: 14px;
+}
+
+/* TEXTAREA */
+.form-textarea {
+  width: 100%;
+  min-height: 90px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.82);
+  border: 1px solid rgba(148,163,184,0.4);
+  color: white;
+  font-size: 14px;
+  resize: vertical;
+}
+
+/* SECTION TITLE */
+.section-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+/* QUESTION LIST ITEM */
+.question-item {
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(148,163,184,0.35);
+  background: rgba(15,23,42,0.8);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
 
