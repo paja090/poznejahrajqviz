@@ -1,202 +1,145 @@
 // utils/evaluateAnswer.js
 
-/**
- * Vyhodnocení odpovědi podle typu otázky.
- * question: objekt otázky z Firestore
- * answerValue: to, co uložila Game stránka jako odpověď
- *
- * Podporované typy:
- * - abc
- * - open
- * - image (imageMode: "abc" | "open")
- * - multi (correctAnswer = pole indexů)
- * - number (correctAnswer = číslo, tolerance & toleranceType)
- * - arrange (correctAnswer = pole indexů správného pořadí)
- */
-export function evaluateAnswer(question, answerValue) {
+// -------------------------------
+// 1) KLASICKÉ HODNOCENÍ OTÁZEK
+// -------------------------------
+export function evaluateAnswer(question, answer) {
   if (!question) return false;
 
-  const { type } = question;
+  const {
+    type,
+    correctAnswer,
+    options,
+    imageMode,
+    tolerance,
+    toleranceType,
+  } = question;
 
-  // ABC (klasické)
+  // --- ABC ---
   if (type === "abc") {
-    if (typeof question.correctAnswer !== "number") return false;
-    return Number(answerValue) === Number(question.correctAnswer);
+    return Number(answer) === Number(correctAnswer);
   }
 
-  // Otevřená odpověď
+  // --- OPEN ---
   if (type === "open") {
-    if (typeof question.correctAnswer !== "string") return false;
-    if (typeof answerValue !== "string") return false;
-
+    if (typeof answer !== "string" || typeof correctAnswer !== "string") {
+      return false;
+    }
     return (
-      answerValue.trim().toLowerCase() ===
-      question.correctAnswer.trim().toLowerCase()
+      answer.trim().toLowerCase() === correctAnswer.trim().toLowerCase()
     );
   }
 
-  // Obrázková
-  if (type === "image") {
-    const mode = question.imageMode || inferImageMode(question);
-
-    // IMAGE + ABC
-    if (mode === "abc") {
-      if (typeof question.correctAnswer !== "number") return false;
-      return Number(answerValue) === Number(question.correctAnswer);
-    }
-
-    // IMAGE + OPEN
-    if (mode === "open") {
-      if (typeof question.correctAnswer !== "string") return false;
-      if (typeof answerValue !== "string") return false;
-
-      return (
-        answerValue.trim().toLowerCase() ===
-        question.correctAnswer.trim().toLowerCase()
-      );
-    }
-  }
-
-  // MULTI-SELECT (pole indexů správných odpovědí)
-  if (type === "multi") {
-    if (!Array.isArray(question.correctAnswer)) return false;
-    if (!answerValue) return false;
-
-    // Podpora: answerValue může být:
-    // - pole indexů
-    // - pole booleanů [true,false,...]
-    let answerIndices = [];
-
-    if (Array.isArray(answerValue)) {
-      if (answerValue.length && typeof answerValue[0] === "boolean") {
-        answerIndices = answerValue
-          .map((v, i) => (v ? i : -1))
-          .filter((i) => i >= 0);
-      } else {
-        answerIndices = answerValue.map((v) => Number(v)).filter((v) => !isNaN(v));
-      }
-    } else {
-      // např. "0,2"
-      if (typeof answerValue === "string") {
-        answerIndices = answerValue
-          .split(",")
-          .map((s) => Number(s.trim()))
-          .filter((n) => !isNaN(n));
-      }
-    }
-
-    const correct = new Set(
-      question.correctAnswer.map((v) => Number(v)).filter((v) => !isNaN(v))
-    );
-    const given = new Set(answerIndices);
-
-    if (correct.size !== given.size) return false;
-    for (const c of correct) {
-      if (!given.has(c)) return false;
-    }
+  // --- SPEED ---
+  if (type === "speed") {
+    // speed otázky se nehodnotí obsahem odpovědi,
+    // správnost/odměna se řeší podle pořadí v evaluateSpeedScoring
     return true;
   }
 
-  // ČÍSELNÁ
+  // --- IMAGE (obrázkové otázky) ---
+  if (type === "image") {
+    // IMAGE-ABC
+    if (imageMode === "abc") {
+      return Number(answer) === Number(correctAnswer);
+    }
+
+    // IMAGE-OPEN
+    if (typeof answer !== "string" || typeof correctAnswer !== "string") {
+      return false;
+    }
+    return (
+      answer.trim().toLowerCase() === correctAnswer.trim().toLowerCase()
+    );
+  }
+
+  // --- MULTI SELECT ---
+  if (type === "multi") {
+    if (!Array.isArray(answer) || !Array.isArray(correctAnswer)) return false;
+    if (answer.length !== correctAnswer.length) return false;
+
+    const sortA = [...answer].sort();
+    const sortC = [...correctAnswer].sort();
+
+    return JSON.stringify(sortA) === JSON.stringify(sortC);
+  }
+
+  // --- NUMBER INPUT ---
   if (type === "number") {
-    const correct = Number(question.correctAnswer);
-    const tol = Number(question.tolerance ?? 0);
-    const tolType = question.toleranceType || "absolute";
+    const a = Number(answer);
+    const c = Number(correctAnswer);
 
-    if (Number.isNaN(correct)) return false;
+    if (Number.isNaN(a) || Number.isNaN(c)) return false;
 
-    const val = Number(answerValue);
-    if (Number.isNaN(val)) return false;
+    // pokud tolerance není definovaná → ber jako 0 (přesná shoda)
+    const safeTolerance =
+      typeof tolerance === "number" && !Number.isNaN(tolerance)
+        ? tolerance
+        : 0;
 
-    if (tolType === "percent") {
-      const diffPercent = Math.abs(val - correct) / (correct || 1);
-      return diffPercent * 100 <= tol;
+    if (toleranceType === "percent") {
+      const limit = (c * safeTolerance) / 100;
+      return Math.abs(a - c) <= limit;
     }
 
     // absolute
-    const diff = Math.abs(val - correct);
-    return diff <= tol;
+    return Math.abs(a - c) <= safeTolerance;
   }
 
-  // SEŘAZENÍ (ARRANGE)
+  // --- ARRANGE (seřazení) ---
   if (type === "arrange") {
-    if (!Array.isArray(question.correctAnswer)) return false;
-    if (!Array.isArray(answerValue)) return false;
-
-    if (question.correctAnswer.length !== answerValue.length) {
-      return false;
-    }
-
-    for (let i = 0; i < question.correctAnswer.length; i++) {
-      if (Number(question.correctAnswer[i]) !== Number(answerValue[i])) {
-        return false;
-      }
-    }
-    return true;
+    if (!Array.isArray(answer) || !Array.isArray(correctAnswer)) return false;
+    return JSON.stringify(answer) === JSON.stringify(correctAnswer);
   }
 
-  // fallback – raději false než chyba
+  // fallback
   return false;
 }
 
-/**
- * Pokud imageMode není uložen, zkusíme ho odhadnout z dat.
- */
-function inferImageMode(question) {
-  if (!question) return "abc";
-  const hasOptions = Array.isArray(question.options) && question.options.length;
-  if (hasOptions && typeof question.correctAnswer === "number") {
-    return "abc";
-  }
-  return "open";
-}
-
-/**
- * Vyhodnocení speed otázky – vrátí mapu {playerId: points}
- * sortedAnswers: pole odpovědí seřazených podle času
- * settings: object z room.settings, může obsahovat speedScoringMode:
- *  - "first" (default) → 1 bod pro nejrychlejšího
- *  - "top3" → 3,2,1 body pro top 3
- *  - "scale" → škála podle pozice (max 5 bodů)
- */
+// -------------------------------
+// 2) SPEED SCORING ENGINE
+// -------------------------------
 export function evaluateSpeedScoring(sortedAnswers, settings = {}) {
-  const mode = settings.speedScoringMode || "first";
-  const result = {};
+  // sortedAnswers = odpovědi seřazené podle timeSubmitted (nejrychlejší první)
+  // settings.speedScoringMode: "first" | "top3" | "scale"
 
-  if (!Array.isArray(sortedAnswers) || sortedAnswers.length === 0) {
+  if (!sortedAnswers || sortedAnswers.length === 0) return {};
+
+  const result = {};
+  const mode = settings.speedScoringMode || "first";
+
+  if (mode === "first") {
+    // pouze první hráč získá 1 bod
+    const winner = sortedAnswers[0];
+    result[winner.playerId] = 1;
     return result;
   }
 
   if (mode === "top3") {
-    const winners = sortedAnswers.slice(0, 3);
+    // váhy 3–2–1
     const weights = [3, 2, 1];
-    winners.forEach((ans, i) => {
-      if (!ans.playerId) return;
-      result[ans.playerId] = (result[ans.playerId] || 0) + weights[i];
+
+    sortedAnswers.slice(0, 3).forEach((ans, i) => {
+      result[ans.playerId] = weights[i];
     });
+
     return result;
   }
 
   if (mode === "scale") {
-    const maxPoints = 5;
+    // rozložené body dle pořadí
     const total = sortedAnswers.length;
-    sortedAnswers.forEach((ans, i) => {
-      if (!ans.playerId) return;
-      const points = Math.max(
-        1,
-        maxPoints -
-          Math.floor((i / (total - 1 || 1)) * (maxPoints - 1))
-      );
-      result[ans.playerId] = (result[ans.playerId] || 0) + points;
+    sortedAnswers.forEach((ans, index) => {
+      result[ans.playerId] = total - index; // 5 hráčů → 5,4,3,2,1
     });
+
     return result;
   }
 
-  // default: only first gets 1 point
-  const first = sortedAnswers[0];
-  if (first?.playerId) {
-    result[first.playerId] = 1;
-  }
+  // fallback: jako "first"
+  const winner = sortedAnswers[0];
+  result[winner.playerId] = 1;
   return result;
 }
+
 
