@@ -77,6 +77,7 @@ export default function Questions() {
 
   // Load questions (realtime)
   useEffect(() => {
+    if (!roomCode) return;
     const qCol = query(
       collection(db, "quizRooms", roomCode, "questions"),
       orderBy("order", "asc")
@@ -110,7 +111,8 @@ export default function Questions() {
     if (!imageFile) return null;
 
     const safeName = imageFile.name.replace(/\s+/g, "_");
-    const path = `roomImages/${roomCode}/${Date.now()}_${safeName}`;
+    // sjednocená složka pro celý projekt
+    const path = `quizImages/${roomCode}/${Date.now()}_${safeName}`;
     const storageRef = ref(storage, path);
     await uploadBytes(storageRef, imageFile);
     return await getDownloadURL(storageRef);
@@ -124,6 +126,11 @@ export default function Questions() {
 
   // SAVE QUESTION
   const handleAddQuestion = async () => {
+    if (!roomCode) {
+      alert("Chybí kód místnosti.");
+      return;
+    }
+
     if (!title.trim()) {
       alert("Zadej text otázky.");
       return;
@@ -132,6 +139,7 @@ export default function Questions() {
     setSaving(true);
     try {
       const now = Date.now();
+      // generujeme ID přes Firestore
       const qRef = doc(
         collection(db, "quizRooms", roomCode, "questions")
       );
@@ -151,9 +159,10 @@ export default function Questions() {
         id,
         title: title.trim(),
         type: questionType,
-        options: null,
+        options: [],
         correctAnswer: null,
         imageUrl: imageUrl || null,
+        imageMode: questionType === "image" ? imageMode : null,
         order: now,
         createdAt: now,
       };
@@ -203,6 +212,11 @@ export default function Questions() {
             return;
           }
           const idx = Number(correctIndex);
+          if (idx < 0 || idx >= options.length) {
+            alert("Vyber správnou odpověď.");
+            setSaving(false);
+            return;
+          }
           payload = {
             ...base,
             options,
@@ -253,6 +267,11 @@ export default function Questions() {
       // NUMBER
       else if (questionType === "number") {
         const num = Number(numberCorrect);
+        if (Number.isNaN(num)) {
+          alert("Zadej platné číslo jako správnou odpověď.");
+          setSaving(false);
+          return;
+        }
         const tol = Number(tolerance);
         payload = {
           ...base,
@@ -279,6 +298,7 @@ export default function Questions() {
         payload = {
           ...base,
           options: lines,
+          // správné pořadí = [0,1,2,...]
           correctAnswer: lines.map((_, i) => i),
         };
       }
@@ -370,7 +390,8 @@ export default function Questions() {
     if (questionType === "speed")
       return (
         <p style={{ fontSize: 13, opacity: 0.8 }}>
-          ⚡ Speed otázka — odpovídá se podle rychlosti.
+          ⚡ Speed otázka — odpovídá se podle rychlosti (body podle nastavení
+          místnosti).
         </p>
       );
 
@@ -380,7 +401,15 @@ export default function Questions() {
         <>
           <div className="form-section">
             <label className="form-label">Obrázek</label>
-            <input type="file" onChange={(e) => setImageFile(e.target.files[0])} />
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) =>
+                setImageFile(e.target.files && e.target.files[0]
+                  ? e.target.files[0]
+                  : null)
+              }
+            />
           </div>
 
           <div className="form-section">
@@ -390,7 +419,7 @@ export default function Questions() {
               value={imageMode}
               onChange={(e) => setImageMode(e.target.value)}
             >
-              <option value="abc">Výběr z možností</option>
+              <option value="abc">Výběr z možností (ABC)</option>
               <option value="open">Otevřená odpověď</option>
             </select>
           </div>
@@ -587,11 +616,23 @@ export default function Questions() {
               <div key={q.id} className="question-item">
                 <div>
                   <div style={{ fontSize: 14 }}>
-                    {TYPE_ICONS[q.type]} {q.title}
+                    {TYPE_ICONS[q.type] ?? "❓"} {q.title}
                   </div>
                   <div style={{ fontSize: 11, opacity: 0.7 }}>
-                    Typ: {TYPE_LABELS[q.type]} • ID: {q.id}
+                    Typ: {TYPE_LABELS[q.type] ?? q.type} • ID: {q.id}
                   </div>
+                  {q.imageUrl && (
+                    <img
+                      src={q.imageUrl}
+                      alt="preview"
+                      style={{
+                        marginTop: 6,
+                        width: 140,
+                        borderRadius: 8,
+                        border: "1px solid rgba(148,163,184,0.3)",
+                      }}
+                    />
+                  )}
                 </div>
               </div>
             ))}
@@ -601,6 +642,7 @@ export default function Questions() {
     </NeonLayout>
   );
 }
+
 
 
 
