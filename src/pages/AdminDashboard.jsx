@@ -56,10 +56,9 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(false);
   const [teamSize, setTeamSize] = useState(4);
 
-  // -------------------------------
   // LOAD ROOM
-  // -------------------------------
   useEffect(() => {
+    if (!roomCode) return;
     const roomRef = doc(db, "quizRooms", roomCode);
     return onSnapshot(roomRef, (snap) => {
       if (snap.exists()) {
@@ -72,10 +71,9 @@ export default function AdminDashboard() {
     });
   }, [roomCode]);
 
-  // -------------------------------
   // LOAD QUESTIONS
-  // -------------------------------
   useEffect(() => {
+    if (!roomCode) return;
     const qRef = query(
       collection(db, "quizRooms", roomCode, "questions"),
       orderBy("order", "asc")
@@ -85,42 +83,36 @@ export default function AdminDashboard() {
     });
   }, [roomCode]);
 
-  // -------------------------------
   // LOAD PLAYERS
-  // -------------------------------
   useEffect(() => {
+    if (!roomCode) return;
     const pRef = collection(db, "quizRooms", roomCode, "players");
     return onSnapshot(pRef, (snap) => {
       setPlayers(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
     });
   }, [roomCode]);
 
-  // -------------------------------
   // LOAD TEAMS
-  // -------------------------------
   useEffect(() => {
+    if (!roomCode) return;
     const tRef = collection(db, "quizRooms", roomCode, "teams");
     return onSnapshot(tRef, (snap) => {
       setTeams(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
     });
   }, [roomCode]);
 
-  // =============================================================
-  // 1) START QUESTION
-  // =============================================================
+  // START QUESTION
   const startQuestion = async (id) => {
-    if (loading) return;
+    if (loading || !roomCode) return;
     await updateDoc(doc(db, "quizRooms", roomCode), {
       currentQuestionId: id,
       status: "running",
     });
   };
 
-  // =============================================================
-  // 2) STOP QUESTION = VYHODNOCENÍ + TEAM BODY
-  // =============================================================
+  // STOP QUESTION = VYHODNOCENÍ + TEAM BODY
   const stopQuestion = async () => {
-    if (loading || !room?.currentQuestionId) return;
+    if (loading || !room?.currentQuestionId || !roomCode) return;
 
     setLoading(true);
 
@@ -147,13 +139,19 @@ export default function AdminDashboard() {
     // pomocné mapy pro team scoring
     const teamScoreDelta = {}; // {teamId: +points}
 
-    // -------------------------------
     // SPEED QUESTION
-    // -------------------------------
     if (question.type === "speed") {
-      const sorted = [...allAnswers].sort(
-        (a, b) => Number(a.timeSubmitted) - Number(b.timeSubmitted)
-      );
+      // robustní výpočet času (timestamp i number)
+      const sorted = [...allAnswers].sort((a, b) => {
+        const getTime = (x) => {
+          if (!x || !x.timeSubmitted) return Infinity;
+          const t = x.timeSubmitted;
+          if (typeof t === "number") return t;
+          if (typeof t?.toMillis === "function") return t.toMillis();
+          return Number(t) || Infinity;
+        };
+        return getTime(a) - getTime(b);
+      });
 
       const scoring = evaluateSpeedScoring(sorted, room.settings || {});
 
@@ -176,9 +174,7 @@ export default function AdminDashboard() {
       }
     }
 
-    // -------------------------------
     // NORMAL QUESTIONS
-    // -------------------------------
     else {
       for (const ans of allAnswers) {
         const isCorrect = evaluateAnswer(question, ans.answer);
@@ -203,9 +199,7 @@ export default function AdminDashboard() {
       }
     }
 
-    // -------------------------------
     // UPDATE TEAM SCORES
-    // -------------------------------
     if (teamMode) {
       const promises = Object.entries(teamScoreDelta).map(
         ([teamId, pts]) =>
@@ -226,26 +220,21 @@ export default function AdminDashboard() {
     setLoading(false);
   };
 
-  // =============================================================
   // DELETE QUESTION
-  // =============================================================
   const deleteQuestion = async (id) => {
+    if (!roomCode) return;
     if (!window.confirm("Opravdu smazat tuto otázku?")) return;
     await deleteDoc(doc(db, "quizRooms", roomCode, "questions", id));
   };
 
-  // =============================================================
   // SCOREBOARD PAGE
-  // =============================================================
   const goScoreboard = () => {
     navigate(`/scoreboard/${roomCode}`);
   };
 
-  // =============================================================
   // DRAG & DROP ORDER
-  // =============================================================
   const handleDragEnd = async (result) => {
-    if (!result.destination) return;
+    if (!result.destination || !roomCode) return;
 
     const reordered = Array.from(questions);
     const [moved] = reordered.splice(result.source.index, 1);
@@ -253,6 +242,7 @@ export default function AdminDashboard() {
 
     setQuestions(reordered);
 
+    // uložíme jednoduché pořadí 0,1,2,...
     const updates = reordered.map((q, index) =>
       updateDoc(
         doc(db, "quizRooms", roomCode, "questions", q.id),
@@ -263,10 +253,9 @@ export default function AdminDashboard() {
     await Promise.all(updates);
   };
 
-  // =============================================================
   // TEAM MODE TOGGLE
-  // =============================================================
   const toggleTeamMode = async () => {
+    if (!roomCode) return;
     const newVal = !room?.teamMode;
 
     await updateDoc(doc(db, "quizRooms", roomCode), {
@@ -278,11 +267,9 @@ export default function AdminDashboard() {
     });
   };
 
-  // =============================================================
   // RANDOM TEAMS
-  // =============================================================
   const generateRandomTeams = async () => {
-    if (!players.length) return;
+    if (!players.length || !roomCode) return;
     if (!window.confirm("Vytvořit nové náhodné týmy? Staré budou přepsány.")) {
       return;
     }
@@ -346,13 +333,11 @@ export default function AdminDashboard() {
     setLoading(false);
   };
 
-  // pomocná funkce – hráči v týmu
+  // hráči v týmu
   const getPlayersInTeam = (teamId) =>
     players.filter((p) => p.teamId === teamId);
 
-  // =============================================================
   // RENDER
-  // =============================================================
   return (
     <NeonLayout>
       <div className="neon-card" style={{ maxWidth: 900, margin: "0 auto" }}>
@@ -640,7 +625,7 @@ export default function AdminDashboard() {
                         {/* Q INFO */}
                         <div>
                           <div style={{ fontWeight: 600 }}>
-                            {TYPE_ICONS[q.type]} {q.title}
+                            {TYPE_ICONS[q.type] ?? "❓"} {q.title}
                           </div>
                           <div
                             style={{
@@ -649,7 +634,8 @@ export default function AdminDashboard() {
                               marginTop: 2,
                             }}
                           >
-                            Typ: {TYPE_LABELS[q.type]} • ID: {q.id}
+                            Typ: {TYPE_LABELS[q.type] ?? q.type} • ID:{" "}
+                            {q.id}
                           </div>
 
                           {q.imageUrl && (
@@ -747,6 +733,7 @@ export default function AdminDashboard() {
     </NeonLayout>
   );
 }
+
 
 
 
