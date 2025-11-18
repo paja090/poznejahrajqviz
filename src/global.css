@@ -1,0 +1,229 @@
+/* global.css */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #020617;
+  color: #f9fafb;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Inter",
+    sans-serif;
+}
+
+/* 🔮 Neon gradient background + jemné particles  */
+.neon-bg {
+  min-height: 100vh;
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+  background: radial-gradient(circle at top, #0f172a 0, #020617 55%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 16px;
+}
+
+.neon-particles {
+  position: absolute;
+  inset: -20%;
+  pointer-events: none;
+  opacity: 0.35;
+  background-image:
+    radial-gradient(circle at 10% 20%, rgba(168, 85, 247, 0.55) 0, transparent 45%),
+    radial-gradient(circle at 80% 10%, rgba(14, 165, 233, 0.4) 0, transparent 55%),
+    radial-gradient(circle at 50% 80%, rgba(34, 197, 94, 0.25) 0, transparent 55%);
+  filter: blur(12px);
+  animation: particlesPulse 18s infinite alternate;
+}
+
+@keyframes particlesPulse {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.25;
+  }
+  50% {
+    transform: translate3d(10px, -14px, 0) scale(1.05);
+    opacity: 0.4;
+  }
+  100% {
+    transform: translate3d(-12px, 16px, 0) scale(1.03);
+    opacity: 0.3;
+  }
+}
+
+.neon-content {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+}
+
+/* 🎛 Neon card */
+.neon-card {
+  background: radial-gradient(circle at top left, #020617 0, #020617 40%, #020617 100%);
+  border-radius: 18px;
+  padding: 20px;
+  max-width: 440px;
+  margin: 0 auto;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  box-shadow: 0 0 40px rgba(15, 23, 42, 0.9);
+}
+
+/* ✨ Neon button */
+.neon-btn {
+  background: linear-gradient(45deg, #a855f7, #ec4899, #00e5a8);
+  border-radius: 999px;
+  border: none;
+  padding: 12px 18px;
+  font-weight: 700;
+  color: #020617;
+  cursor: pointer;
+  box-shadow: 0 0 18px rgba(236, 72, 153, 0.7);
+  transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
+}
+
+.neon-btn:hover {
+  transform: translateY(-1px) scale(1.02);
+  box-shadow: 0 0 30px rgba(236, 72, 153, 0.9);
+  filter: brightness(1.05);
+}
+
+.neon-btn:active {
+  transform: translateY(0) scale(0.98);
+  box-shadow: 0 0 12px rgba(236, 72, 153, 0.6);
+}
+
+/* 🧊 Secondary pill */
+.neon-pill {
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.6);
+  background: rgba(15, 23, 42, 0.9);
+  padding: 10px 14px;
+}
+
+/* ⏱ Countdown 3–2–1 */
+.countdown-overlay {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(15, 23, 42, 0.95), #020617);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 40;
+}
+
+.countdown-number {
+  font-size: 80px;
+  font-weight: 900;
+  background: linear-gradient(45deg, #a855f7, #ec4899, #00e5a8);
+  -webkit-background-clip: text;
+  color: transparent;
+  text-shadow: 0 0 30px rgba(236, 72, 153, 0.9);
+  animation: countdownPop 0.7s ease-out;
+}
+
+@keyframes countdownPop {
+  0% {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.25);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+}
+
+/* 🎊 Confetti */
+.confetti-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 30;
+}
+
+.confetti-piece {
+  position: absolute;
+  width: 6px;
+  height: 14px;
+  border-radius: 2px;
+  opacity: 0.9;
+  animation: confettiFall 1.2s linear forwards;
+}
+
+@keyframes confettiFall {
+  0% {
+    transform: translate3d(0, -100%, 0) rotateZ(0deg);
+  }
+  100% {
+    transform: translate3d(0, 110vh, 0) rotateZ(360deg);
+    opacity: 0;
+  }
+}
+
+/* 🏆 Final top-3 kruhy */
+.podium {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.podium-item {
+  width: 82px;
+  height: 82px;
+  border-radius: 50%;
+  border: 2px solid rgba(148, 163, 184, 0.8);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  font-size: 11px;
+  text-align: center;
+  padding: 4px;
+  background: radial-gradient(circle at top, rgba(15, 23, 42, 0.95), #020617);
+}
+
+.podium-item.gold {
+  border-color: #facc15;
+  box-shadow: 0 0 22px rgba(250, 204, 21, 0.55);
+}
+
+.podium-item.silver {
+  border-color: #e5e7eb;
+  box-shadow: 0 0 18px rgba(229, 231, 235, 0.35);
+}
+
+.podium-item.bronze {
+  border-color: #f97316;
+  box-shadow: 0 0 18px rgba(249, 115, 22, 0.55);
+}
+
+/* 📱 Mobile helpers */
+@media (max-width: 480px) {
+  .neon-card {
+    padding: 16px;
+    border-radius: 16px;
+  }
+}
+@keyframes floatUp {
+  0% {
+    transform: translate(-50%, 6px);
+    opacity: 0;
+  }
+  40% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -18px);
+    opacity: 0;
+  }
+}
+
