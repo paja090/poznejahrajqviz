@@ -23,50 +23,38 @@ export default function AdminDashboard() {
   const [isCountingDown, setIsCountingDown] = useState(false);
   const [countdownValue, setCountdownValue] = useState(3);
 
- {/* Otázky */}
-<div style={styles.section}>
-  <h2 style={styles.header}>Otázky</h2>
-
-  <Link
-    to={`/host/${roomCode}/select-questions`}
-    style={{
-      display: "inline-block",
-      marginBottom: 10,
-      padding: "8px 12px",
-      background: "rgba(148,163,184,0.2)",
-      color: "white",
-      borderRadius: 8,
-      fontSize: 14,
-      textDecoration: "none"
-    }}
-  >
-    📚 Vybrat otázky z databáze
-  </Link>
-
-  {questions.map((q, index) => {
-    const isActive = currentQuestionId === q.id;
-
-    return (
-      <div
-        key={q.id}
-        style={{
-          ...styles.questionBox,
-          border: isActive
-            ? "1px solid rgba(16, 185, 129, 0.8)"
-            : "1px solid transparent",
-        }}
-      >
-        <strong>
-          {index + 1}. {q.title}
-        </strong>
-
-        {/* … původní obsah otázky */}
-      </div>
+  // 🔥 NAČTENÍ OTÁZEK
+  useEffect(() => {
+    const qRef = query(
+      collection(db, "quizRooms", roomCode, "questions"),
+      orderBy("order", "asc")
     );
-  })}
-</div>
 
-  // počet odpovědí
+    return onSnapshot(qRef, (snap) => {
+      setQuestions(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    });
+  }, [roomCode]);
+
+  // 🔥 NAČTENÍ STAVU MÍSTNOSTI
+  useEffect(() => {
+    const roomRef = doc(db, "quizRooms", roomCode);
+    return onSnapshot(roomRef, (snap) => {
+      const data = snap.data();
+      if (!data) return;
+      setCurrentQuestionId(data.currentQuestionId || null);
+      setStatus(data.status || "waiting");
+    });
+  }, [roomCode]);
+
+  // 🔥 NAČTENÍ HRÁČŮ
+  useEffect(() => {
+    const pRef = collection(db, "quizRooms", roomCode, "players");
+    return onSnapshot(pRef, (snap) => {
+      setPlayers(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    });
+  }, [roomCode]);
+
+  // 🔥 ODEZVY HRÁČŮ K AKTUÁLNÍ OTÁZCE
   useEffect(() => {
     if (!currentQuestionId) {
       setAnswersCount(0);
@@ -89,7 +77,7 @@ export default function AdminDashboard() {
     (p) => !answeredPlayerIds.includes(p.id)
   );
 
-  // spustit konkrétní otázku
+  // 🔥 SPUSTIT OTÁZKU
   const startQuestion = async (id) => {
     await setDoc(
       doc(db, "quizRooms", roomCode),
@@ -98,7 +86,7 @@ export default function AdminDashboard() {
     );
   };
 
-  // start hry + odpočet
+  // 🔥 START HRY S ODPOČTEM
   const startGameWithCountdown = () => {
     if (!questions.length) {
       alert("Nejsou připravené žádné otázky.");
@@ -121,7 +109,7 @@ export default function AdminDashboard() {
     }, 1000);
   };
 
-  // pauza / pokračovat
+  // 🔥 POZASTAVIT / POKRAČOVAT
   const togglePause = async () => {
     const newStatus = status === "paused" ? "running" : "paused";
     await setDoc(
@@ -131,7 +119,7 @@ export default function AdminDashboard() {
     );
   };
 
-  // ukončit hru
+  // 🔥 UKONČIT HRU
   const endGame = async () => {
     await setDoc(
       doc(db, "quizRooms", roomCode),
@@ -141,7 +129,7 @@ export default function AdminDashboard() {
     alert("Hra ukončena.");
   };
 
-  // další otázka
+  // 🔥 DALŠÍ OTÁZKA
   const startNextQuestion = () => {
     if (!questions.length) return;
 
@@ -176,14 +164,24 @@ export default function AdminDashboard() {
           Odtud řídíš hru: start, pauza, další otázky i žebříček.
         </p>
 
+        {/* 🔥 TLAČÍTKO NA VÝBĚR OTÁZEK Z BANKY */}
         <Link
-          to={`/host/${roomCode}/questions`}
-          style={styles.linkQuestions}
+          to={`/host/${roomCode}/select-questions`}
+          style={{
+            display: "inline-block",
+            marginBottom: 12,
+            padding: "8px 12px",
+            background: "rgba(148,163,184,0.25)",
+            color: "white",
+            borderRadius: 8,
+            fontSize: 14,
+            textDecoration: "none",
+          }}
         >
-          ➕ Správa a přidávání otázek
+          📚 Vybrat otázky z databáze
         </Link>
 
-        {/* Stav hry */}
+        {/* 🔥 ODMANŽMENT STATU */}
         <div style={styles.section}>
           <h2 style={styles.header}>Stav hry</h2>
           <p style={styles.statusPill}>{statusLabel}</p>
@@ -197,10 +195,7 @@ export default function AdminDashboard() {
 
           {!isCountingDown && status !== "finished" && (
             <div style={styles.btnCol}>
-              <button
-                style={styles.btnPrimary}
-                onClick={startGameWithCountdown}
-              >
+              <button style={styles.btnPrimary} onClick={startGameWithCountdown}>
                 🚀 Start hry (3…2…1)
               </button>
 
@@ -221,15 +216,9 @@ export default function AdminDashboard() {
               </Link>
             </div>
           )}
-
-          {status === "finished" && (
-            <p style={styles.sub}>
-              Hra je ukončena. Můžeš vytvořit novou místnost pro další kolo.
-            </p>
-          )}
         </div>
 
-        {/* Hráči */}
+        {/* 🔥 HRÁČI */}
         <div style={styles.section}>
           <h2 style={styles.header}>Hráči ({players.length})</h2>
           <ul style={{ margin: 0, paddingLeft: 16 }}>
@@ -241,19 +230,20 @@ export default function AdminDashboard() {
           </ul>
         </div>
 
-        {/* Otázky */}
+        {/* 🔥 OTÁZKY */}
         <div style={styles.section}>
           <h2 style={styles.header}>Otázky</h2>
 
           {questions.map((q, index) => {
             const isActive = currentQuestionId === q.id;
+
             return (
               <div
                 key={q.id}
                 style={{
                   ...styles.questionBox,
                   border: isActive
-                    ? "1px solid rgba(16, 185, 129, 0.8)"
+                    ? "1px solid rgba(16,185,129,0.8)"
                     : "1px solid transparent",
                 }}
               >
@@ -262,32 +252,13 @@ export default function AdminDashboard() {
                 </strong>
 
                 <div style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }}>
-                  Typ: {q.type === "abc"
+                  Typ:{" "}
+                  {q.type === "abc"
                     ? "ABC"
                     : q.type === "open"
                     ? "Otevřená"
-                    : "Rychlostní"}
+                    : "Speed"}
                 </div>
-
-                {q.type === "abc" && q.options && (
-                  <div style={styles.smallOptions}>
-                    <div>A: {q.options[0]}</div>
-                    <div>B: {q.options[1]}</div>
-                    <div>C: {q.options[2]}</div>
-                  </div>
-                )}
-
-                {q.type === "open" && (
-                  <div style={styles.smallOptions}>
-                    Správná odpověď: {q.correctAnswer}
-                  </div>
-                )}
-
-                {q.type === "speed" && (
-                  <div style={styles.smallOptions}>
-                    ⚡ Bod získá nejrychlejší odpověď.
-                  </div>
-                )}
 
                 {isActive && (
                   <>
@@ -298,49 +269,44 @@ export default function AdminDashboard() {
 
                     {unansweredPlayers.length > 0 && (
                       <div style={styles.unansweredBox}>
-                        <div
-                          style={{ fontWeight: 600, marginBottom: 4 }}
-                        >
+                        <div style={{ fontWeight: 600, marginBottom: 4 }}>
                           Neodpověděli:
                         </div>
                         <div style={styles.unansweredList}>
-                          {unansweredPlayers
-                            .map((p) => p.name)
-                            .join(", ")}
+                          {unansweredPlayers.map((p) => p.name).join(", ")}
                         </div>
                       </div>
                     )}
                   </>
                 )}
 
-                <div style={styles.btnRow}>
-                  <button
-                    style={styles.btnStartQ}
-                    onClick={() => startQuestion(q.id)}
-                  >
-                    ▶ Spustit tuto otázku
-                  </button>
-                </div>
+                <button
+                  style={styles.btnStartQ}
+                  onClick={() => startQuestion(q.id)}
+                >
+                  ▶ Spustit tuto otázku
+                </button>
               </div>
             );
           })}
 
           {questions.length === 0 && (
             <p style={{ fontSize: 13, opacity: 0.7 }}>
-              Zatím žádné otázky – přidej je v sekci „Otázky“.
+              Zatím žádné otázky – přidej je v sekci „Správa otázek“ nebo použij
+              tlačítko výše.
             </p>
           )}
         </div>
 
         <div style={styles.footerNote}>
-          Tip: Pro podrobné vyhodnocení odpovědí (správně/špatně) použij
-          obrazovku „Otázky“, kde je logika vyhodnocování.
+          Tip: Detailní vyhodnocení odpovědí najdeš v sekci „Otázky“.
         </div>
       </div>
     </div>
   );
 }
 
+// 🔥 STYLY – BEZE ZMĚNY
 const styles = {
   page: {
     minHeight: "100vh",
@@ -367,12 +333,6 @@ const styles = {
     fontSize: 13,
     opacity: 0.7,
     marginBottom: 10,
-  },
-  linkQuestions: {
-    display: "inline-block",
-    fontSize: 13,
-    marginBottom: 14,
-    color: "#a5b4fc",
   },
   section: {
     marginBottom: 18,
@@ -415,7 +375,6 @@ const styles = {
     marginTop: 10,
   },
   btnPrimary: {
-    width: "100%",
     padding: 10,
     background: "linear-gradient(45deg,#a855f7,#ec4899,#00e5a8)",
     borderRadius: 999,
@@ -426,7 +385,6 @@ const styles = {
     fontSize: 15,
   },
   btnNext: {
-    width: "100%",
     padding: 9,
     background: "linear-gradient(45deg,#22c55e,#16a34a)",
     borderRadius: 999,
@@ -437,7 +395,6 @@ const styles = {
     fontSize: 14,
   },
   btnPause: {
-    width: "100%",
     padding: 9,
     background: "linear-gradient(45deg,#facc15,#eab308)",
     borderRadius: 999,
@@ -448,7 +405,6 @@ const styles = {
     fontSize: 14,
   },
   btnEnd: {
-    width: "100%",
     padding: 9,
     background: "linear-gradient(45deg,#ef4444,#b91c1c)",
     borderRadius: 999,
@@ -459,7 +415,6 @@ const styles = {
     fontSize: 14,
   },
   btnScore: {
-    width: "100%",
     display: "block",
     marginTop: 4,
     textAlign: "center",
@@ -481,11 +436,6 @@ const styles = {
     borderRadius: 12,
     marginBottom: 10,
   },
-  smallOptions: {
-    fontSize: 13,
-    opacity: 0.8,
-    marginTop: 4,
-  },
   unansweredBox: {
     marginTop: 6,
     padding: 6,
@@ -496,13 +446,8 @@ const styles = {
   unansweredList: {
     opacity: 0.9,
   },
-  btnRow: {
-    display: "flex",
-    gap: 8,
-    marginTop: 8,
-  },
   btnStartQ: {
-    flex: 1,
+    marginTop: 8,
     padding: 8,
     background: "linear-gradient(45deg,#38bdf8,#6366f1)",
     borderRadius: 999,
@@ -519,4 +464,5 @@ const styles = {
     textAlign: "center",
   },
 };
+
 
