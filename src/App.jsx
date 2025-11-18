@@ -9,6 +9,8 @@ import Scoreboard from "./pages/Scoreboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import ImportQuestions from "./pages/ImportQuestions";
 import SelectQuestions from "./pages/SelectQuestions";
+import TestMode from "./pages/TestMode";
+
 
 
 
