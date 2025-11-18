@@ -1,5 +1,5 @@
 // pages/Scoreboard.jsx
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import {
   collection,
@@ -21,88 +21,118 @@ export default function Scoreboard() {
 
   const playerId = localStorage.getItem("playerId");
 
-  // --------------------------
-  // Load Players
-  // --------------------------
+  // PLAYERS (realtime)
   useEffect(() => {
     const ref = collection(db, "quizRooms", roomCode, "players");
     return onSnapshot(ref, (snap) => {
       const arr = snap.docs
         .map((d) => ({ id: d.id, ...d.data() }))
-        .sort((a, b) => b.score - a.score);
+        .sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
       setPlayers(arr);
     });
   }, [roomCode]);
 
-  // --------------------------
-  // Load Questions
-  // --------------------------
+  // QUESTIONS (realtime)
   useEffect(() => {
-    const qRef = collection(db, "quizRooms", roomCode, "questions");
-    return onSnapshot(qRef, (snap) => {
+    const ref = collection(db, "quizRooms", roomCode, "questions");
+    return onSnapshot(ref, (snap) => {
       setQuestions(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
     });
   }, [roomCode]);
 
-  // --------------------------
-  // Load Answers
-  // --------------------------
+  // ANSWERS (snapshot – pro scoreboard stačí)
   useEffect(() => {
     const load = async () => {
-      const aRef = collection(db, "quizRooms", roomCode, "answers");
-      const aSnap = await getDocs(aRef);
-      setAnswers(aSnap.docs.map((d) => d.data()));
+      const ref = collection(db, "quizRooms", roomCode, "answers");
+      const snap = await getDocs(ref);
+      setAnswers(snap.docs.map((d) => d.data()));
     };
     load();
   }, [roomCode]);
 
-  // --------------------------
-  // Build details per player
-  // --------------------------
-  const getPlayerAnswers = (pid) => {
-    const out = [];
+  // mapy pro rychlý přístup
+  const questionById = useMemo(() => {
+    const map = {};
+    questions.forEach((q) => (map[q.id] = q));
+    return map;
+  }, [questions]);
 
+  const answersByQuestion = useMemo(() => {
+    const map = {};
+    answers.forEach((a) => {
+      if (!map[a.questionId]) map[a.questionId] = [];
+      map[a.questionId].push(a);
+    });
+    return map;
+  }, [answers]);
+
+  // statistiky pro hráče (accuracy, speed index, atd.)
+  const buildStatsForPlayer = (pid) => {
+    const totalQuestions = questions.length;
+    const myAnswers = answers.filter((a) => a.playerId === pid);
+
+    let answeredCount = 0;
+    let correctCount = 0;
+
+    let speedRounds = 0;
+    let speedRankSum = 0;
+    let speedWins = 0;
+
+    // projdeme všechny otázky, aby seděl kontext
     questions.forEach((q) => {
-      const ans = answers.find(
-        (a) => a.playerId === pid && a.questionId === q.id
-      );
+      const ans = myAnswers.find((a) => a.questionId === q.id);
 
-      if (!ans) {
-        out.push({
-          q,
-          answered: false,
-          correct: false,
-        });
-      } else {
-        const correct = evaluateAnswer(q, ans.answer);
-        out.push({
-          q,
-          answered: true,
-          correct,
-          answer: ans.answer,
-        });
+      // odpovědi + správně/špatně
+      if (ans) {
+        answeredCount++;
+        if (evaluateAnswer(q, ans.answer)) {
+          correctCount++;
+        }
+      }
+
+      // speed statistiky
+      if (q.type === "speed" && answersByQuestion[q.id]) {
+        const all = [...answersByQuestion[q.id]].sort(
+          (a, b) => Number(a.timeSubmitted) - Number(b.timeSubmitted)
+        );
+
+        const idx = all.findIndex((a) => a.playerId === pid);
+        if (idx !== -1) {
+          const rank = idx + 1;
+          speedRounds++;
+          speedRankSum += rank;
+          if (rank === 1) speedWins++;
+        }
       }
     });
 
-    return out;
+    const accuracy =
+      answeredCount > 0
+        ? Math.round((correctCount / answeredCount) * 100)
+        : 0;
+
+    const avgSpeedRank =
+      speedRounds > 0 ? speedRankSum / speedRounds : null;
+
+    return {
+      totalQuestions,
+      answeredCount,
+      correctCount,
+      accuracy,
+      speedRounds,
+      avgSpeedRank,
+      speedWins,
+    };
   };
 
-  // --------------------------
-  // Toggle detail
-  // --------------------------
   const toggleExpand = (pid) => {
     setExpanded((prev) => (prev === pid ? null : pid));
   };
 
-  // --------------------------
-  // RENDER
-  // --------------------------
   return (
-    <NeonLayout maxWidth={650}>
+    <NeonLayout maxWidth={720}>
       <div className="neon-card">
-        <h1 style={styles.title}>
-          📊 Žebříček – {roomCode}
-        </h1>
+        <h1 style={styles.title}>📊 Žebříček – {roomCode}</h1>
 
         <div style={{ marginBottom: 14 }}>
           <Link
@@ -118,11 +148,17 @@ export default function Scoreboard() {
           </Link>
         </div>
 
-        {/* PLAYERS */}
+        {players.length === 0 && (
+          <p style={{ fontSize: 13, opacity: 0.75 }}>
+            Zatím žádní hráči…
+          </p>
+        )}
+
+        {/* PLAYER ROWS */}
         <div>
           {players.map((p, index) => {
-            const isMe = p.id === playerId;
             const rank = index + 1;
+            const isMe = p.id === playerId;
             const medal =
               rank === 1
                 ? "🥇"
@@ -132,6 +168,8 @@ export default function Scoreboard() {
                 ? "🥉"
                 : `${rank}.`;
 
+            const stats = buildStatsForPlayer(p.id);
+
             return (
               <div
                 key={p.id}
@@ -139,38 +177,76 @@ export default function Scoreboard() {
                   ...styles.playerRow,
                   background: isMe
                     ? "rgba(59,130,246,0.25)"
-                    : "rgba(255,255,255,0.06)",
+                    : "rgba(15,23,42,0.92)",
                   border:
                     rank <= 3
                       ? "1px solid rgba(250,204,21,0.5)"
-                      : "1px solid transparent",
+                      : "1px solid rgba(148,163,184,0.3)",
                 }}
-                onClick={() => toggleExpand(p.id)}
               >
-                <div style={styles.playerLeft}>
-                  <span style={{ width: 28, display: "inline-block" }}>
-                    {medal}
-                  </span>
-                  <span>{p.name}</span>
+                {/* HLAVNÍ ŘÁDEK */}
+                <div
+                  style={styles.playerHeader}
+                  onClick={() => toggleExpand(p.id)}
+                >
+                  <div style={styles.playerLeft}>
+                    <span
+                      style={{
+                        width: 30,
+                        display: "inline-block",
+                      }}
+                    >
+                      {medal}
+                    </span>
+                    <span>{p.name}</span>
+                  </div>
+
+                  <div style={styles.playerRight}>
+                    <span>{p.score ?? 0} b.</span>
+                    <span
+                      style={{
+                        width: 12,
+                        height: 12,
+                        borderRadius: "999px",
+                        background: p.color,
+                        marginLeft: 6,
+                      }}
+                    />
+                    <span style={styles.chevron}>
+                      {expanded === p.id ? "▲" : "▼"}
+                    </span>
+                  </div>
                 </div>
 
-                <div style={styles.playerRight}>
-                  <span>{p.score ?? 0} b.</span>
-                  <span
-                    style={{
-                      width: 10,
-                      height: 10,
-                      borderRadius: "999px",
-                      background: p.color,
-                      marginLeft: 6,
-                    }}
+                {/* MINI STATISTIKY */}
+                <div style={styles.miniStatsRow}>
+                  <StatChip
+                    label="Accuracy"
+                    value={`${stats.accuracy}%`}
+                    type="accent"
                   />
+                  <StatChip
+                    label="Odpovědi"
+                    value={`${stats.answeredCount}/${stats.totalQuestions}`}
+                  />
+                  <StatChip
+                    label="Speed výhry"
+                    value={stats.speedWins}
+                  />
+                  {stats.avgSpeedRank && (
+                    <StatChip
+                      label="Speed index"
+                      value={stats.avgSpeedRank.toFixed(1)}
+                    />
+                  )}
                 </div>
 
-                {/* DETAILS */}
+                {/* DETAILY */}
                 {expanded === p.id && (
                   <PlayerDetails
-                    items={getPlayerAnswers(p.id)}
+                    questions={questions}
+                    answers={answers}
+                    playerId={p.id}
                   />
                 )}
               </div>
@@ -183,37 +259,104 @@ export default function Scoreboard() {
 }
 
 // -------------------------------------------------
-// PLAYER DETAILS COMPONENT
+// STAT CHIP
 // -------------------------------------------------
-function PlayerDetails({ items }) {
+function StatChip({ label, value, type }) {
+  const baseStyle = {
+    display: "inline-flex",
+    flexDirection: "column",
+    alignItems: "flex-start",
+    padding: "6px 10px",
+    borderRadius: 999,
+    fontSize: 11,
+    border: "1px solid rgba(148,163,184,0.5)",
+    minWidth: 80,
+  };
+
+  const accent =
+    type === "accent"
+      ? {
+          border: "1px solid rgba(74,222,128,0.8)",
+          boxShadow: "0 0 12px rgba(74,222,128,0.35)",
+        }
+      : {};
+
+  return (
+    <div style={{ ...baseStyle, ...accent }}>
+      <span style={{ opacity: 0.7 }}>{label}</span>
+      <span style={{ fontWeight: 600, fontSize: 13 }}>{value}</span>
+    </div>
+  );
+}
+
+// -------------------------------------------------
+// PLAYER DETAILS – seznam všech otázek + stav
+// -------------------------------------------------
+function PlayerDetails({ questions, answers, playerId }) {
+  const rows = questions.map((q) => {
+    const ans = answers.find(
+      (a) => a.playerId === playerId && a.questionId === q.id
+    );
+    const answered = !!ans;
+    const correct = answered
+      ? evaluateAnswer(q, ans.answer)
+      : false;
+
+    return { q, ans, answered, correct };
+  });
+
   return (
     <div style={styles.detailsBox}>
-      {items.map((row, i) => (
-        <div key={i} style={styles.detailRow}>
-          <span style={styles.detailTitle}>
-            {row.q.title}
-          </span>
-
-          <span
-            style={{
-              ...styles.detailStatus,
-              color: !row.answered
-                ? "#facc15"
-                : row.correct
-                ? "#4ade80"
-                : "#f87171",
-            }}
-          >
-            {!row.answered
-              ? "neodpověděl"
-              : row.correct
-              ? "správně"
-              : "špatně"}
-          </span>
+      {rows.map((row, i) => (
+        <div key={row.q.id || i} style={styles.detailRow}>
+          <div style={styles.detailLeft}>
+            <span style={styles.detailTitle}>{row.q.title}</span>
+            <span style={styles.detailType}>
+              {typeToLabel(row.q.type)}
+            </span>
+          </div>
+          <div style={styles.detailRight}>
+            {!row.answered && (
+              <span style={{ color: "#facc15", fontSize: 12 }}>
+                neodpověděl
+              </span>
+            )}
+            {row.answered && (
+              <span
+                style={{
+                  fontSize: 12,
+                  color: row.correct ? "#4ade80" : "#f97373",
+                }}
+              >
+                {row.correct ? "správně" : "špatně"}
+              </span>
+            )}
+          </div>
         </div>
       ))}
     </div>
   );
+}
+
+function typeToLabel(type) {
+  switch (type) {
+    case "abc":
+      return "ABC";
+    case "open":
+      return "Otevřená";
+    case "image":
+      return "Obrázková";
+    case "speed":
+      return "Speed";
+    case "multi":
+      return "Multi";
+    case "number":
+      return "Číselná";
+    case "arrange":
+      return "Seřazení";
+    default:
+      return type || "";
+  }
 }
 
 // -------------------------------------------------
@@ -229,52 +372,72 @@ const styles = {
     WebkitBackgroundClip: "text",
     color: "transparent",
   },
-
   playerRow: {
     padding: "10px 12px",
     marginBottom: 10,
-    borderRadius: 12,
-    cursor: "pointer",
-    backdropFilter: "blur(4px)",
+    borderRadius: 14,
   },
-
+  playerHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    cursor: "pointer",
+  },
   playerLeft: {
-    fontSize: 16,
-    fontWeight: 600,
     display: "flex",
     alignItems: "center",
-    gap: 6,
+    gap: 8,
+    fontSize: 16,
+    fontWeight: 600,
   },
-
   playerRight: {
     display: "flex",
     alignItems: "center",
-    gap: 6,
-    fontSize: 14,
-    float: "right",
-  },
-
-  detailsBox: {
-    marginTop: 12,
-    padding: "10px 12px",
-    borderRadius: 12,
-    background: "rgba(255,255,255,0.05)",
-  },
-
-  detailRow: {
-    padding: "6px 0",
-    display: "flex",
-    justifyContent: "space-between",
+    gap: 4,
     fontSize: 13,
   },
-
-  detailTitle: {
-    opacity: 0.85,
+  chevron: {
+    marginLeft: 4,
+    opacity: 0.7,
+    fontSize: 11,
   },
-
-  detailStatus: {
-    fontWeight: 600,
+  miniStatsRow: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 8,
+  },
+  detailsBox: {
+    marginTop: 10,
+    padding: "8px 10px",
+    borderRadius: 12,
+    background: "rgba(15,23,42,0.96)",
+    border: "1px solid rgba(148,163,184,0.4)",
+  },
+  detailRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    padding: "4px 0",
+    fontSize: 12,
+  },
+  detailLeft: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 2,
+    maxWidth: "70%",
+  },
+  detailTitle: {
+    opacity: 0.9,
+  },
+  detailType: {
+    opacity: 0.6,
+    fontSize: 11,
+  },
+  detailRight: {
+    display: "flex",
+    alignItems: "center",
   },
 };
+
 
 
