@@ -25,6 +25,7 @@ export default function App() {
         <Route path="/lobby/:roomCode" element={<Lobby />} />
         <Route path="/game/:roomCode/:playerId" element={<Game />} />
         <Route path="/scoreboard/:roomCode" element={<Scoreboard />} />
+        <Route path="/import" element={<ImportQuestions />} />
       </Routes>
     </BrowserRouter>
   );
