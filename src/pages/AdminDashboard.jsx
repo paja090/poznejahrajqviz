@@ -9,7 +9,7 @@ import {
   query,
   orderBy,
 } from "firebase/firestore";
-import questionBank from "../data/questionBank.json";
+
 export default function AdminDashboard() {
   const { roomCode } = useParams();
 
