@@ -1,3 +1,4 @@
+// pages/JoinRoom.jsx
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { db } from "../firebaseConfig";
@@ -10,6 +11,26 @@ import {
   updateDoc,
   increment,
 } from "firebase/firestore";
+import NeonLayout from "../components/NeonLayout";
+
+const PLAYER_COLORS = [
+  "#22c55e",
+  "#ef4444",
+  "#3b82f6",
+  "#eab308",
+  "#a855f7",
+  "#ec4899",
+  "#06b6d4",
+  "#f97316",
+  "#22d3ee",
+  "#4ade80",
+  "#facc15",
+  "#fb7185",
+];
+
+function randomColor() {
+  return PLAYER_COLORS[Math.floor(Math.random() * PLAYER_COLORS.length)];
+}
 
 export default function JoinRoom() {
   const [roomCode, setRoomCode] = useState("");
@@ -45,11 +66,21 @@ export default function JoinRoom() {
         return;
       }
 
-      const playersRef = collection(db, "quizRooms", trimmedRoom, "players");
+      const color = randomColor();
+
+      const playersRef = collection(
+        db,
+        "quizRooms",
+        trimmedRoom,
+        "players"
+      );
       const playerDoc = await addDoc(playersRef, {
         name: trimmedName,
         score: 0,
         joinedAt: serverTimestamp(),
+        color,
+        fastestWins: 0,
+        reactionScore: 0,
       });
 
       await updateDoc(roomRef, {
@@ -66,29 +97,8 @@ export default function JoinRoom() {
   };
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "#020617",
-        color: "white",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        padding: 24,
-      }}
-    >
-      <form
-        onSubmit={handleJoin}
-        style={{
-          width: "100%",
-          maxWidth: 420,
-          background: "rgba(15,23,42,0.95)",
-          borderRadius: 18,
-          padding: 20,
-          boxShadow: "0 0 30px rgba(15,23,42,0.9)",
-          border: "1px solid rgba(148,163,184,0.4)",
-        }}
-      >
+    <NeonLayout>
+      <form onSubmit={handleJoin} className="neon-card">
         <h1
           style={{
             fontSize: 24,
@@ -123,26 +133,18 @@ export default function JoinRoom() {
         <button
           type="submit"
           disabled={loading}
+          className="neon-btn"
           style={{
             marginTop: 18,
             width: "100%",
-            padding: 14,
-            borderRadius: 999,
-            border: "none",
-            cursor: loading ? "default" : "pointer",
-            fontWeight: 700,
             fontSize: 16,
-            background:
-              "linear-gradient(45deg,#a855f7,#ec4899,#00e5a8)",
-            color: "#020617",
-            boxShadow: "0 0 20px rgba(236,72,153,0.6)",
             opacity: loading ? 0.7 : 1,
           }}
         >
           {loading ? "Připojuji…" : "🔑 Připojit se"}
         </button>
       </form>
-    </div>
+    </NeonLayout>
   );
 }
 
@@ -164,3 +166,4 @@ const inputStyle = {
   fontSize: 14,
   outline: "none",
 };
+
