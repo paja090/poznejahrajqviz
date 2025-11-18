@@ -1,490 +1,385 @@
+// pages/Scoreboard.jsx
 import { useEffect, useState } from "react";
-import { db } from "../firebaseConfig";
 import { useParams } from "react-router-dom";
+import { db } from "../firebaseConfig";
 import {
+  collection,
   doc,
   getDoc,
-  onSnapshot,
-  setDoc,
-  serverTimestamp,
-  collection,
   getDocs,
 } from "firebase/firestore";
+import NeonLayout from "../components/NeonLayout";
 
-export default function Game() {
-  const { roomCode, playerId } = useParams();
-
-  const [currentQuestionId, setCurrentQuestionId] = useState(null);
-  const [question, setQuestion] = useState(null);
-  const [answered, setAnswered] = useState(false);
-
-  const [lastQuestionId, setLastQuestionId] = useState(null);
-  const [result, setResult] = useState(null);
+export default function Scoreboard() {
+  const { roomCode } = useParams();
 
   const [players, setPlayers] = useState([]);
-  const [showScoreboard, setShowScoreboard] = useState(false);
-  const [status, setStatus] = useState("waiting");
-  const [openAnswer, setOpenAnswer] = useState("");
+  const [bestAccuracy, setBestAccuracy] = useState(null);
+  const [fastestPlayer, setFastestPlayer] = useState(null);
+  const [mostPopularQuestion, setMostPopularQuestion] =
+    useState(null);
 
-  // Poslech místnosti
   useEffect(() => {
-    const roomRef = doc(db, "quizRooms", roomCode);
-
-    const unsub = onSnapshot(roomRef, (snap) => {
-      const data = snap.data();
-      if (!data) return;
-
-      setStatus(data.status || "waiting");
-
-      setCurrentQuestionId(data.currentQuestionId);
-
-      if (data.currentQuestionId) {
-        setLastQuestionId(data.currentQuestionId);
-        setAnswered(false);
-        setResult(null);
-        setShowScoreboard(false);
-        setOpenAnswer("");
-      }
-    });
-
-    return () => unsub();
-  }, [roomCode]);
-
-  // Načtení otázky
-  useEffect(() => {
-    if (!currentQuestionId) {
-      setQuestion(null);
-      return;
-    }
-
-    const qRef = doc(
-      db,
-      "quizRooms",
-      roomCode,
-      "questions",
-      currentQuestionId
-    );
-
-    getDoc(qRef).then((snap) => {
-      if (snap.exists()) {
-        setQuestion({ id: currentQuestionId, ...snap.data() });
-      }
-    });
-  }, [currentQuestionId, roomCode]);
-
-  // Konec otázky -> výsledek
-  useEffect(() => {
-    if (currentQuestionId === null && lastQuestionId) {
-      showResult();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentQuestionId]);
-
-  // Zobrazení výsledku
-  const showResult = async () => {
-    if (!lastQuestionId) return;
-
-    const qRef = doc(db, "quizRooms", roomCode, "questions", lastQuestionId);
-    const qSnap = await getDoc(qRef);
-    if (!qSnap.exists()) return;
-    const qData = { id: lastQuestionId, ...qSnap.data() };
-
-    const ansRef = doc(
-      db,
-      "quizRooms",
-      roomCode,
-      "answers",
-      `${playerId}_${lastQuestionId}`
-    );
-    const ansSnap = await getDoc(ansRef);
-    const ansData = ansSnap.exists() ? ansSnap.data() : null;
-
-    let res = {
-      type: qData.type || "abc",
-      correctAnswer: qData.correctAnswer,
-      isCorrect: false,
-      isWinner: false,
-      answered: !!ansData,
-    };
-
-    if (!ansData) {
-      // hráč neodpověděl
-      setResult(res);
-    } else if (qData.type === "abc") {
-      res.isCorrect = ansData.answer === qData.correctAnswer;
-      setResult(res);
-    } else if (qData.type === "open") {
-      if (
-        typeof ansData.answer === "string" &&
-        typeof qData.correctAnswer === "string"
-      ) {
-        res.isCorrect =
-          ansData.answer.trim().toLowerCase() ===
-          qData.correctAnswer.trim().toLowerCase();
-      }
-      setResult(res);
-    } else if (qData.type === "speed") {
-      const allAnsSnap = await getDocs(
-        collection(db, "quizRooms", roomCode, "answers")
+    const load = async () => {
+      const playersSnap = await getDocs(
+        collection(db, "quizRooms", roomCode, "players")
       );
-      const allForQuestion = allAnsSnap.docs
-        .map((d) => d.data())
-        .filter(
-          (a) =>
-            a.questionId === lastQuestionId && a.timeSubmitted
-        );
-
-      if (allForQuestion.length) {
-        allForQuestion.sort(
-          (a, b) =>
-            a.timeSubmitted.toMillis() - b.timeSubmitted.toMillis()
-        );
-        const fastest = allForQuestion[0];
-        res.isWinner = fastest.playerId === playerId;
-      }
-      setResult(res);
-    }
-
-    setTimeout(() => {
-      setResult(null);
-      loadScoreboard();
-      setShowScoreboard(true);
-
-      setTimeout(() => {
-        setShowScoreboard(false);
-        setQuestion(null);
-      }, 5000);
-    }, 4000);
-  };
-
-  // Scoreboard
-  const loadScoreboard = () => {
-    const playersRef = collection(db, "quizRooms", roomCode, "players");
-
-    return onSnapshot(playersRef, (snap) => {
-      const playersList = snap.docs.map((d) => ({
+      const playersList = playersSnap.docs.map((d) => ({
         id: d.id,
         ...d.data(),
       }));
-
       playersList.sort((a, b) => (b.score || 0) - (a.score || 0));
       setPlayers(playersList);
-    });
-  };
 
-  // Odeslání odpovědi
-  const sendAnswer = async (value) => {
-    if (answered || !currentQuestionId) return;
-
-    setAnswered(true);
-
-    await setDoc(
-      doc(
-        db,
-        "quizRooms",
-        roomCode,
-        "answers",
-        `${playerId}_${currentQuestionId}`
-      ),
-      {
-        playerId,
-        questionId: currentQuestionId,
-        answer: value,
-        type: question?.type || "abc",
-        timeSubmitted: serverTimestamp(),
-      }
-    );
-  };
-
-  // UI: Výsledek
-  if (result) {
-    if (result.type === "speed") {
-      return (
-        <div style={styles.page}>
-          <div style={styles.container}>
-            <div style={styles.resultBox}>
-              <h1
-                style={
-                  result.answered && result.isWinner
-                    ? styles.correct
-                    : styles.wrong
-                }
-              >
-                {result.answered
-                  ? result.isWinner
-                    ? "⚡ Byl jsi nejrychlejší!"
-                    : "Někdo byl o chlup rychlejší…"
-                  : "Nestihl jsi odpovědět."}
-              </h1>
-
-              <p style={styles.sub}>Čekej na žebříček…</p>
-            </div>
-          </div>
-        </div>
+      const answersSnap = await getDocs(
+        collection(db, "quizRooms", roomCode, "answers")
       );
+      const answers = answersSnap.docs.map((d) => d.data());
+
+      const questionsSnap = await getDocs(
+        collection(db, "quizRooms", roomCode, "questions")
+      );
+      const questions = {};
+      questionsSnap.docs.forEach((q) => {
+        questions[q.id] = { id: q.id, ...q.data() };
+      });
+
+      // accuracy per player
+      const stats = {};
+      for (const ans of answers) {
+        if (!stats[ans.playerId]) {
+          stats[ans.playerId] = {
+            total: 0,
+            correct: 0,
+          };
+        }
+        stats[ans.playerId].total += 1;
+
+        const q = questions[ans.questionId];
+        if (!q) continue;
+        let isCorrect = false;
+
+        if (q.type === "abc") {
+          isCorrect = ans.answer === q.correctAnswer;
+        } else if (q.type === "open") {
+          if (
+            typeof ans.answer === "string" &&
+            typeof q.correctAnswer === "string"
+          ) {
+            isCorrect =
+              ans.answer.trim().toLowerCase() ===
+              q.correctAnswer.trim().toLowerCase();
+          }
+        } else if (q.type === "image") {
+          if (typeof q.correctAnswer === "number") {
+            isCorrect = ans.answer === q.correctAnswer;
+          } else if (
+            typeof q.correctAnswer === "string" &&
+            typeof ans.answer === "string"
+          ) {
+            isCorrect =
+              ans.answer.trim().toLowerCase() ===
+              q.correctAnswer.trim().toLowerCase();
+          }
+        }
+        if (isCorrect) {
+          stats[ans.playerId].correct += 1;
+        }
+      }
+
+      let bestAcc = null;
+      Object.entries(stats).forEach(([playerId, s]) => {
+        if (!s.total) return;
+        const acc = s.correct / s.total;
+        if (!bestAcc || acc > bestAcc.accuracy) {
+          const player = playersList.find((p) => p.id === playerId);
+          if (player) {
+            bestAcc = {
+              player,
+              accuracy: acc,
+              total: s.total,
+            };
+          }
+        }
+      });
+      setBestAccuracy(bestAcc);
+
+      // nejrychlejší hráč podle reactionScore / fastestWins
+      let fastest = null;
+      playersList.forEach((p) => {
+        const score = (p.reactionScore || 0) + (p.fastestWins || 0) * 2;
+        if (!fastest || score > fastest.score) {
+          fastest = { player: p, score };
+        }
+      });
+      setFastestPlayer(fastest);
+
+      // otázka s nejvíce správnými odpověďmi
+      const correctCounts = {};
+      for (const ans of answers) {
+        const q = questions[ans.questionId];
+        if (!q) continue;
+
+        let isCorrect = false;
+        if (q.type === "abc") {
+          isCorrect = ans.answer === q.correctAnswer;
+        } else if (q.type === "open") {
+          if (
+            typeof ans.answer === "string" &&
+            typeof q.correctAnswer === "string"
+          ) {
+            isCorrect =
+              ans.answer.trim().toLowerCase() ===
+              q.correctAnswer.trim().toLowerCase();
+          }
+        } else if (q.type === "image") {
+          if (typeof q.correctAnswer === "number") {
+            isCorrect = ans.answer === q.correctAnswer;
+          } else if (
+            typeof q.correctAnswer === "string" &&
+            typeof ans.answer === "string"
+          ) {
+            isCorrect =
+              ans.answer.trim().toLowerCase() ===
+              q.correctAnswer.trim().toLowerCase();
+          }
+        }
+
+        if (isCorrect) {
+          correctCounts[ans.questionId] =
+            (correctCounts[ans.questionId] || 0) + 1;
+        }
+      }
+
+      let bestQ = null;
+      Object.entries(correctCounts).forEach(([qId, count]) => {
+        const q = questions[qId];
+        if (!q) return;
+        if (!bestQ || count > bestQ.count) {
+          bestQ = { question: q, count };
+        }
+      });
+
+      setMostPopularQuestion(bestQ);
+    };
+
+    if (roomCode) {
+      load();
     }
+  }, [roomCode]);
 
-    return (
-      <div style={styles.page}>
-        <div style={styles.container}>
-          <div style={styles.resultBox}>
-            {result.answered ? (
-              result.isCorrect ? (
-                <h1 style={styles.correct}>✔ Správně!</h1>
-              ) : (
-                <h1 style={styles.wrong}>✘ Špatně!</h1>
-              )
-            ) : (
-              <h1 style={styles.wrong}>⏱ Neodpověděl jsi včas</h1>
-            )}
-
-            {result.type === "abc" && (
-              <p style={styles.correctAnswer}>
-                Správná odpověď:{" "}
-                <span style={{ fontSize: 30 }}>
-                  {["A", "B", "C"][result.correctAnswer]}
-                </span>
-              </p>
-            )}
-
-            {result.type === "open" && (
-              <p style={styles.correctAnswer}>
-                Správná odpověď:{" "}
-                <span style={{ fontSize: 20 }}>
-                  {result.correctAnswer}
-                </span>
-              </p>
-            )}
-
-            <p style={styles.sub}>Čekej na žebříček…</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // UI: Scoreboard
-  if (showScoreboard) {
-    return (
-      <div style={styles.page}>
-        <div style={styles.container}>
-          <h1 style={styles.title}>📊 Žebříček</h1>
-
-          <div style={styles.scoreboardBox}>
-            {players.map((p, index) => (
-              <div key={p.id} style={styles.scoreRow}>
-                <span>
-                  {index + 1}. {p.name}
-                </span>
-                <strong>{p.score ?? 0} b.</strong>
-              </div>
-            ))}
-          </div>
-
-          <p style={styles.sub}>Další otázka začne za chvíli…</p>
-        </div>
-      </div>
-    );
-  }
-
-  // UI: Hra
   return (
-    <div style={styles.page}>
-      <div style={styles.container}>
-        <h1 style={styles.title}>Místnost {roomCode}</h1>
+    <NeonLayout maxWidth={720}>
+      <div
+        style={{
+          color: "white",
+          padding: 4,
+        }}
+      >
+        <h1
+          style={{
+            fontSize: 26,
+            fontWeight: 800,
+            textAlign: "center",
+            marginBottom: 4,
+            background:
+              "linear-gradient(45deg,#a855f7,#ec4899,#00e5a8)",
+            WebkitBackgroundClip: "text",
+            color: "transparent",
+          }}
+        >
+          🏆 Finální výsledky
+        </h1>
+        <p
+          style={{
+            textAlign: "center",
+            fontSize: 13,
+            opacity: 0.8,
+            marginBottom: 14,
+          }}
+        >
+          Místnost {roomCode}
+        </p>
 
-        {status === "paused" && (
-          <div style={styles.pausedBox}>
-            ⏸ Hra je dočasně pozastavena, počkej na moderátora.
-          </div>
-        )}
+        {/* TOP hráči */}
+        <div
+          style={{
+            background: "rgba(15,23,42,0.95)",
+            padding: 16,
+            borderRadius: 16,
+            border: "1px solid rgba(148,163,184,0.4)",
+            marginBottom: 16,
+          }}
+        >
+          <h2
+            style={{
+              fontSize: 18,
+              marginBottom: 8,
+            }}
+          >
+            Žebříček hráčů
+          </h2>
 
-        {!currentQuestionId && !question && (
-          <p style={styles.sub}>Čekáme na další otázku…</p>
-        )}
+          {players.length === 0 && (
+            <p style={{ fontSize: 13, opacity: 0.7 }}>
+              Žádní hráči – zřejmě došlo k chybě nebo nikdo nehrál.
+            </p>
+          )}
 
-        {question && (
-          <>
-            <h2 style={styles.question}>{question.title}</h2>
-
-            {/* ABC */}
-            {question.type === "abc" && question.options && (
-              <>
-                {question.options.map((opt, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => sendAnswer(idx)}
-                    disabled={answered}
+          {players.length > 0 && (
+            <>
+              <div style={{ marginBottom: 10 }}>
+                {players.slice(0, 3).map((p, i) => (
+                  <div
+                    key={p.id}
                     style={{
-                      ...styles.answerBtn,
-                      opacity: answered ? 0.5 : 1,
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      padding: "8px 10px",
+                      borderRadius: 999,
+                      marginBottom: 6,
+                      background:
+                        i === 0
+                          ? "rgba(250,204,21,0.16)"
+                          : "rgba(148,163,184,0.16)",
                     }}
                   >
-                    {["A", "B", "C"][idx]} – {opt}
-                  </button>
+                    <span
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        fontSize: 14,
+                      }}
+                    >
+                      <span style={{ width: 22 }}>
+                        {i === 0
+                          ? "🥇"
+                          : i === 1
+                          ? "🥈"
+                          : "🥉"}
+                      </span>
+                      <span>{p.name}</span>
+                    </span>
+                    <span style={{ fontSize: 14 }}>
+                      {p.score ?? 0} b.
+                    </span>
+                  </div>
                 ))}
-              </>
-            )}
+              </div>
 
-            {/* otevřená */}
-            {question.type === "open" && (
-              <>
-                <input
-                  style={styles.input}
-                  value={openAnswer}
-                  onChange={(e) => setOpenAnswer(e.target.value)}
-                  placeholder="Napiš svou odpověď…"
-                  disabled={answered}
-                />
-                <button
-                  onClick={() => sendAnswer(openAnswer)}
-                  disabled={answered || !openAnswer.trim()}
-                  style={{
-                    ...styles.answerBtn,
-                    opacity:
-                      answered || !openAnswer.trim() ? 0.6 : 1,
-                    fontSize: 16,
-                  }}
-                >
-                  ✔ Odeslat odpověď
-                </button>
-              </>
-            )}
+              <div
+                className="podium"
+                style={{ marginTop: 6, marginBottom: 6 }}
+              >
+                {players.slice(0, 3).map((p, i) => (
+                  <div
+                    key={p.id}
+                    className={`podium-item ${
+                      i === 0
+                        ? "gold"
+                        : i === 1
+                        ? "silver"
+                        : "bronze"
+                    }`}
+                  >
+                    <div
+                      style={{
+                        fontSize: 12,
+                        marginBottom: 4,
+                      }}
+                    >
+                      {i === 0
+                        ? "Vítěz"
+                        : i === 1
+                        ? "2. místo"
+                        : "3. místo"}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 600,
+                      }}
+                    >
+                      {p.name}
+                    </div>
+                    <div style={{ fontSize: 11 }}>
+                      {p.score ?? 0} b.
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
 
-            {/* speed */}
-            {question.type === "speed" && (
-              <>
-                <p style={{ fontSize: 13, opacity: 0.75, marginTop: 6 }}>
-                  ⚡ Rychlostní otázka – buď první, kdo odpoví.
-                </p>
-                <input
-                  style={styles.input}
-                  value={openAnswer}
-                  onChange={(e) => setOpenAnswer(e.target.value)}
-                  placeholder="Tvá odpověď…"
-                  disabled={answered}
-                />
-                <button
-                  onClick={() => sendAnswer(openAnswer || "answered")}
-                  disabled={answered}
-                  style={{
-                    ...styles.answerBtn,
-                    opacity: answered ? 0.6 : 1,
-                    fontSize: 16,
-                  }}
-                >
-                  ⚡ Odpovědět co nejrychleji
-                </button>
-              </>
-            )}
+        {/* Statistika */}
+        <div
+          style={{
+            background: "rgba(15,23,42,0.95)",
+            padding: 16,
+            borderRadius: 16,
+            border: "1px solid rgba(148,163,184,0.4)",
+          }}
+        >
+          <h2
+            style={{
+              fontSize: 18,
+              marginBottom: 8,
+            }}
+          >
+            Statistika hry
+          </h2>
 
-            {answered && (
-              <p style={styles.sent}>Odpověď odeslána! ✔</p>
-            )}
-          </>
-        )}
+          <ul
+            style={{
+              listStyle: "none",
+              paddingLeft: 0,
+              margin: 0,
+              fontSize: 13,
+            }}
+          >
+            <li style={{ marginBottom: 6 }}>
+              <strong>Nejlepší přesnost:</strong>{" "}
+              {bestAccuracy ? (
+                <>
+                  {bestAccuracy.player.name} –{" "}
+                  {(bestAccuracy.accuracy * 100).toFixed(0)}% (
+                  {bestAccuracy.correct}/{bestAccuracy.total})
+                </>
+              ) : (
+                "Nedostatek dat."
+              )}
+            </li>
+
+            <li style={{ marginBottom: 6 }}>
+              <strong>Nejrychlejší reakce:</strong>{" "}
+              {fastestPlayer && fastestPlayer.score > 0 ? (
+                <>
+                  {fastestPlayer.player.name} (reakční skóre{" "}
+                  {fastestPlayer.score})
+                </>
+              ) : (
+                "Nedostatek dat ze speed otázek."
+              )}
+            </li>
+
+            <li>
+              <strong>Nejoblíbenější otázka:</strong>{" "}
+              {mostPopularQuestion ? (
+                <>
+                  „{mostPopularQuestion.question.title}“ –{" "}
+                  {mostPopularQuestion.count} správných odpovědí
+                </>
+              ) : (
+                "Nenašla se otázka s výrazně vysokým počtem správných odpovědí."
+              )}
+            </li>
+          </ul>
+        </div>
       </div>
-    </div>
+    </NeonLayout>
   );
 }
 
-const styles = {
-  page: {
-    minHeight: "100vh",
-    background: "#020617",
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 16,
-  },
-  container: {
-    width: "100%",
-    maxWidth: 420,
-    textAlign: "center",
-    fontFamily: "Inter, sans-serif",
-    color: "white",
-  },
-  title: {
-    fontSize: 26,
-    marginBottom: 16,
-    fontWeight: 700,
-    background: "linear-gradient(45deg,#a855f7,#ec4899,#00e5a8)",
-    WebkitBackgroundClip: "text",
-    color: "transparent",
-  },
-  question: {
-    fontSize: 22,
-    marginBottom: 16,
-  },
-  answerBtn: {
-    background: "linear-gradient(45deg,#a855f7,#ec4899,#00e5a8)",
-    boxShadow: "0 0 15px rgba(236,72,153,0.5)",
-    borderRadius: 14,
-    padding: "14px 20px",
-    marginBottom: 10,
-    width: "100%",
-    color: "#071022",
-    fontSize: 18,
-    fontWeight: 700,
-    border: "none",
-    cursor: "pointer",
-  },
-  input: {
-    width: "100%",
-    padding: 10,
-    borderRadius: 12,
-    border: "1px solid rgba(148,163,184,0.6)",
-    background: "rgba(15,23,42,0.8)",
-    color: "white",
-    fontSize: 14,
-    marginBottom: 10,
-    outline: "none",
-  },
-  sent: {
-    color: "lime",
-    marginTop: 10,
-    fontSize: 16,
-  },
-  resultBox: {
-    marginTop: 40,
-  },
-  correct: {
-    fontSize: 34,
-    color: "lime",
-    textShadow: "0 0 20px lime",
-  },
-  wrong: {
-    fontSize: 34,
-    color: "red",
-    textShadow: "0 0 20px red",
-  },
-  correctAnswer: {
-    marginTop: 18,
-    fontSize: 18,
-  },
-  sub: {
-    marginTop: 20,
-    opacity: 0.7,
-    fontSize: 14,
-  },
-  scoreboardBox: {
-    marginTop: 16,
-    padding: 10,
-  },
-  scoreRow: {
-    background: "rgba(255,255,255,0.08)",
-    padding: "10px 14px",
-    borderRadius: 12,
-    marginBottom: 8,
-    fontSize: 16,
-    display: "flex",
-    justifyContent: "space-between",
-  },
-  pausedBox: {
-    padding: 8,
-    borderRadius: 999,
-    background: "rgba(148,163,184,0.2)",
-    fontSize: 13,
-    marginBottom: 10,
-  },
-};
