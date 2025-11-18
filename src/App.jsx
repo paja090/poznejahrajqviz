@@ -28,6 +28,7 @@ export default function App() {
         <Route path="/game/:roomCode/:playerId" element={<Game />} />
         <Route path="/scoreboard/:roomCode" element={<Scoreboard />} />
         <Route path="/import" element={<ImportQuestions />} />
+        <Route path="/host/:roomCode/select-questions" element={<SelectQuestions />} />
       </Routes>
     </BrowserRouter>
   );
