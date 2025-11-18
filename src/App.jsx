@@ -8,6 +8,8 @@ import Game from "./pages/Game";
 import Scoreboard from "./pages/Scoreboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import ImportQuestions from "./pages/ImportQuestions";
+import SelectQuestions from "./pages/SelectQuestions";
+
 
 
 export default function App() {
