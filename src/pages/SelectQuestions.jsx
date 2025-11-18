@@ -43,30 +43,45 @@ export default function SelectQuestions() {
     loadQuestionBank();
   }, []);
 
-  const loadQuestionBank = async () =>
-  {
+  const loadQuestionBank = async () => {
     const snap = await getDocs(collection(db, "questionBank"));
     setBankQuestions(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
   };
 
+  // sjednocení struktury pro místnost
   const normalized = (q) => {
     const now = Date.now();
+
+    // options musí být vždy pole
+    const options = Array.isArray(q.options) ? q.options : [];
+
+    // pokud typ image nemá imageMode, dopočítáme:
+    // - pokud má options a numeric correctAnswer → "abc"
+    // - jinak "open"
+    let imageMode = q.imageMode || null;
+    if (q.type === "image" && !imageMode) {
+      if (
+        Array.isArray(options) &&
+        options.length > 0 &&
+        typeof q.correctAnswer === "number"
+      ) {
+        imageMode = "abc";
+      } else {
+        imageMode = "open";
+      }
+    }
 
     return {
       id: q.id,
       title: q.title,
       type: q.type,
-      options: q.options || null,
-      correctAnswer: q.correctAnswer ?? null,
+      options,
+      correctAnswer:
+        q.correctAnswer !== undefined ? q.correctAnswer : null,
       imageUrl: q.imageUrl ?? null,
-
-      // Pro IMAGE typ – jestli máš v bankách imageMode
-      imageMode: q.imageMode || null,
-
-      // Pro NUMBER typ – pokud existuje
-      tolerance: q.tolerance || null,
-      toleranceType: q.toleranceType || null,
-
+      imageMode: imageMode ?? null,
+      tolerance: q.tolerance ?? null,
+      toleranceType: q.toleranceType ?? null,
       order: now,
       createdAt: now,
       category: q.category || "other",
@@ -75,6 +90,10 @@ export default function SelectQuestions() {
   };
 
   const addOne = async (q) => {
+    if (!roomCode) {
+      alert("Chybí kód místnosti.");
+      return;
+    }
     setLoading(true);
     try {
       const payload = normalized(q);
@@ -91,6 +110,11 @@ export default function SelectQuestions() {
   };
 
   const importCategory = async (category) => {
+    if (!roomCode) {
+      alert("Chybí kód místnosti.");
+      return;
+    }
+
     if (!window.confirm(`Opravdu chceš importovat kategorii "${category}"?`))
       return;
 
@@ -117,7 +141,8 @@ export default function SelectQuestions() {
         );
 
         const data = normalized(q);
-        data.order = now + Math.random(); // malé rozhození pořadí
+        // mírně náhodné pořadí
+        data.order = now + Math.random();
         batch.set(ref, data);
       });
 
@@ -137,7 +162,9 @@ export default function SelectQuestions() {
       ? bankQuestions
       : bankQuestions.filter((q) => q.type === filter);
 
-  const categories = Array.from(new Set(bankQuestions.map((q) => q.category)));
+  const categories = Array.from(
+    new Set(bankQuestions.map((q) => q.category))
+  ).filter(Boolean);
 
   return (
     <NeonLayout>
@@ -222,6 +249,11 @@ export default function SelectQuestions() {
                 📥 {cat}
               </button>
             ))}
+            {categories.length === 0 && (
+              <span style={{ fontSize: 12, opacity: 0.7 }}>
+                V databázi nejsou definované žádné kategorie.
+              </span>
+            )}
           </div>
         </div>
 
@@ -237,14 +269,14 @@ export default function SelectQuestions() {
               <div key={q.id} className="question-item">
                 <div>
                   <div style={{ fontSize: 14, fontWeight: 600 }}>
-                    {TYPE_ICONS[q.type]} {q.title}
+                    {TYPE_ICONS[q.type] ?? "❓"} {q.title}
                   </div>
 
                   <div
                     style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }}
                   >
-                    Typ: {TYPE_LABELS[q.type]} • Kategorie: {q.category} •
-                    ID: {q.id}
+                    Typ: {TYPE_LABELS[q.type] ?? q.type} • Kategorie:{" "}
+                    {q.category || "nezadaná"} • ID: {q.id}
                   </div>
                 </div>
 
@@ -264,5 +296,6 @@ export default function SelectQuestions() {
     </NeonLayout>
   );
 }
+
 
 
