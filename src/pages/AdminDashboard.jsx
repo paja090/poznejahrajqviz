@@ -23,36 +23,48 @@ export default function AdminDashboard() {
   const [isCountingDown, setIsCountingDown] = useState(false);
   const [countdownValue, setCountdownValue] = useState(3);
 
-  // otázky
-  useEffect(() => {
-    const q = query(
-      collection(db, "quizRooms", roomCode, "questions"),
-      orderBy("createdAt", "asc")
+ {/* Otázky */}
+<div style={styles.section}>
+  <h2 style={styles.header}>Otázky</h2>
+
+  <Link
+    to={`/host/${roomCode}/select-questions`}
+    style={{
+      display: "inline-block",
+      marginBottom: 10,
+      padding: "8px 12px",
+      background: "rgba(148,163,184,0.2)",
+      color: "white",
+      borderRadius: 8,
+      fontSize: 14,
+      textDecoration: "none"
+    }}
+  >
+    📚 Vybrat otázky z databáze
+  </Link>
+
+  {questions.map((q, index) => {
+    const isActive = currentQuestionId === q.id;
+
+    return (
+      <div
+        key={q.id}
+        style={{
+          ...styles.questionBox,
+          border: isActive
+            ? "1px solid rgba(16, 185, 129, 0.8)"
+            : "1px solid transparent",
+        }}
+      >
+        <strong>
+          {index + 1}. {q.title}
+        </strong>
+
+        {/* … původní obsah otázky */}
+      </div>
     );
-
-    return onSnapshot(q, (snap) => {
-      setQuestions(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-    });
-  }, [roomCode]);
-
-  // stav místnosti
-  useEffect(() => {
-    const roomRef = doc(db, "quizRooms", roomCode);
-    return onSnapshot(roomRef, (snap) => {
-      const data = snap.data();
-      if (!data) return;
-      setCurrentQuestionId(data.currentQuestionId || null);
-      setStatus(data.status || "waiting");
-    });
-  }, [roomCode]);
-
-  // hráči
-  useEffect(() => {
-    const pRef = collection(db, "quizRooms", roomCode, "players");
-    return onSnapshot(pRef, (snap) => {
-      setPlayers(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-    });
-  }, [roomCode]);
+  })}
+</div>
 
   // počet odpovědí
   useEffect(() => {
