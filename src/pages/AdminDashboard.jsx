@@ -165,21 +165,41 @@ export default function AdminDashboard() {
         </p>
 
         {/* 🔥 TLAČÍTKO NA VÝBĚR OTÁZEK Z BANKY */}
-        <Link
-          to={`/host/${roomCode}/select-questions`}
-          style={{
-            display: "inline-block",
-            marginBottom: 12,
-            padding: "8px 12px",
-            background: "rgba(148,163,184,0.25)",
-            color: "white",
-            borderRadius: 8,
-            fontSize: 14,
-            textDecoration: "none",
-          }}
-        >
-          📚 Vybrat otázky z databáze
-        </Link>
+        <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
+  <Link
+    to={`/host/${roomCode}/select-questions`}
+    style={{
+      flex: 1,
+      padding: "10px 14px",
+      background: "rgba(148,163,184,0.25)",
+      borderRadius: 8,
+      color: "white",
+      textAlign: "center",
+      fontSize: 14,
+      textDecoration: "none",
+      fontWeight: 600,
+    }}
+  >
+    📚 Vybrat z databáze
+  </Link>
+
+  <Link
+    to={`/host/${roomCode}/questions`}
+    style={{
+      flex: 1,
+      padding: "10px 14px",
+      background: "rgba(100,200,255,0.25)",
+      borderRadius: 8,
+      color: "white",
+      textAlign: "center",
+      fontSize: 14,
+      textDecoration: "none",
+      fontWeight: 600,
+    }}
+  >
+    ➕ Přidat ručně
+  </Link>
+</div>
 
         {/* 🔥 ODMANŽMENT STATU */}
         <div style={styles.section}>
