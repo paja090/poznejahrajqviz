@@ -1,8 +1,5 @@
 {
   "questions": [
-    /* =========================
-       ① HISTORIE
-       ========================= */
     {
       "id": "hist001",
       "category": "Historie",
@@ -100,10 +97,6 @@
       "difficulty": "medium",
       "imageUrl": "https://example.com/images/historie/klinove.jpg"
     },
-
-    /* =========================
-       ② GEOGRAFIE
-       ========================= */
     {
       "id": "geo001",
       "category": "Geografie",
@@ -201,10 +194,6 @@
       "difficulty": "easy",
       "imageUrl": null
     },
-
-    /* =========================
-       ③ SPORT
-       ========================= */
     {
       "id": "sport001",
       "category": "Sport",
@@ -302,10 +291,6 @@
       "difficulty": "easy",
       "imageUrl": null
     },
-
-    /* =========================
-       ④ FILMY & SERIÁLY
-       ========================= */
     {
       "id": "movie001",
       "category": "Filmy & Seriály",
@@ -403,10 +388,6 @@
       "difficulty": "easy",
       "imageUrl": null
     },
-
-    /* =========================
-       ⑤ HUDBA
-       ========================= */
     {
       "id": "music001",
       "category": "Hudba",
@@ -504,15 +485,6 @@
       "difficulty": "easy",
       "imageUrl": null
     }
-
-    /* … Pokračování ve stejném duchu:
-       ⑥ Zvířata & Příroda
-       ⑦ Věda & Technologie
-       ⑧ Slavné osobnosti
-       ⑨ Hry & Kvízy
-       ⑩ Česká republika speciál
-       – každá kategorie cca 9–12 otázek (ABC / open / image)
-       – spolu ti to dá ~100 otázek v tomto souboru
-    */
   ]
 }
+
