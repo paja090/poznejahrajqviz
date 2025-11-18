@@ -11,13 +11,16 @@ import Scoreboard from "./pages/Scoreboard";
 import ImportQuestions from "./pages/ImportQuestions";
 import SelectQuestions from "./pages/SelectQuestions";
 
-// ⭐ Test Mode
+// Testovací stránky
 import TestMode from "./pages/TestMode";
+import TestInteractive from "./pages/TestInteractive";
+import TeamTest from "./pages/TeamTest";
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
+
         {/* Home */}
         <Route path="/" element={<Home />} />
 
@@ -36,8 +39,11 @@ export default function App() {
         {/* Import */}
         <Route path="/import" element={<ImportQuestions />} />
 
-        {/* ⭐ Test Mode */}
+        {/* ⭐ Testovací módy */}
         <Route path="/test" element={<TestMode />} />
+        <Route path="/testinteractive" element={<TestInteractive />} />
+        <Route path="/teamtest" element={<TeamTest />} />
+
       </Routes>
     </BrowserRouter>
   );
