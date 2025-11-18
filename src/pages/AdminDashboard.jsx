@@ -1,488 +1,688 @@
+// pages/AdminDashboard.jsx
 import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
-import { db } from "../firebaseConfig";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   collection,
   doc,
-  onSnapshot,
+  getDoc,
   setDoc,
+  deleteDoc,
+  onSnapshot,
   query,
   orderBy,
+  updateDoc,
 } from "firebase/firestore";
+import { db } from "../firebaseConfig";
+import NeonLayout from "../components/NeonLayout";
+import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+
+const TYPE_ICONS = {
+  abc: "🅰",
+  open: "✏️",
+  image: "🖼️",
+  speed: "⚡",
+  multi: "✅",
+  number: "🔢",
+  arrange: "🔁",
+};
+
+const TYPE_LABELS = {
+  abc: "ABC",
+  open: "Otevřená",
+  image: "Obrázková",
+  speed: "Speed",
+  multi: "Multi-select",
+  number: "Číselná",
+  arrange: "Seřazení",
+};
 
 export default function AdminDashboard() {
   const { roomCode } = useParams();
+  const navigate = useNavigate();
 
   const [questions, setQuestions] = useState([]);
-  const [currentQuestionId, setCurrentQuestionId] = useState(null);
-  const [status, setStatus] = useState("waiting");
   const [players, setPlayers] = useState([]);
-  const [answersCount, setAnswersCount] = useState(0);
-  const [answeredPlayerIds, setAnsweredPlayerIds] = useState([]);
+  const [room, setRoom] = useState(null);
+  const [loading, setLoading] = useState(false);
 
-  const [isCountingDown, setIsCountingDown] = useState(false);
-  const [countdownValue, setCountdownValue] = useState(3);
+  // Load room info
+  useEffect(() => {
+    const roomRef = doc(db, "quizRooms", roomCode);
 
-  // 🔥 NAČTENÍ OTÁZEK
+    const unsub = onSnapshot(roomRef, (snap) => {
+      if (snap.exists()) {
+        setRoom({ id: roomCode, ...snap.data() });
+      }
+    });
+
+    return () => unsub();
+  }, [roomCode]);
+
+  // Load questions
   useEffect(() => {
     const qRef = query(
       collection(db, "quizRooms", roomCode, "questions"),
       orderBy("order", "asc")
     );
 
-    return onSnapshot(qRef, (snap) => {
+    const unsub = onSnapshot(qRef, (snap) => {
       setQuestions(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
     });
+
+    return () => unsub();
   }, [roomCode]);
 
-  // 🔥 NAČTENÍ STAVU MÍSTNOSTI
-  useEffect(() => {
-    const roomRef = doc(db, "quizRooms", roomCode);
-    return onSnapshot(roomRef, (snap) => {
-      const data = snap.data();
-      if (!data) return;
-      setCurrentQuestionId(data.currentQuestionId || null);
-      setStatus(data.status || "waiting");
-    });
-  }, [roomCode]);
-
-  // 🔥 NAČTENÍ HRÁČŮ
+  // Load players
   useEffect(() => {
     const pRef = collection(db, "quizRooms", roomCode, "players");
-    return onSnapshot(pRef, (snap) => {
+
+    const unsub = onSnapshot(pRef, (snap) => {
       setPlayers(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
     });
+
+    return () => unsub();
   }, [roomCode]);
 
-  // 🔥 ODEZVY HRÁČŮ K AKTUÁLNÍ OTÁZCE
-  useEffect(() => {
-    if (!currentQuestionId) {
-      setAnswersCount(0);
-      setAnsweredPlayerIds([]);
-      return;
-    }
-
-    const ansRef = collection(db, "quizRooms", roomCode, "answers");
-
-    return onSnapshot(ansRef, (snap) => {
-      const filtered = snap.docs.filter(
-        (d) => d.data().questionId === currentQuestionId
-      );
-      setAnswersCount(filtered.length);
-      setAnsweredPlayerIds(filtered.map((d) => d.data().playerId));
-    });
-  }, [roomCode, currentQuestionId]);
-
-  const unansweredPlayers = players.filter(
-    (p) => !answeredPlayerIds.includes(p.id)
-  );
-
-  // 🔥 SPUSTIT OTÁZKU
+  // Start question
   const startQuestion = async (id) => {
-    await setDoc(
-      doc(db, "quizRooms", roomCode),
-      { currentQuestionId: id, status: "running" },
-      { merge: true }
+    await updateDoc(doc(db, "quizRooms", roomCode), {
+      currentQuestionId: id,
+      status: "running",
+    });
+  };
+
+  // Stop question
+  const stopQuestion = async () => {
+    await updateDoc(doc(db, "quizRooms", roomCode), {
+      currentQuestionId: null,
+      status: "waiting",
+    });
+  };
+
+  // Go to scoreboard
+  const goScoreboard = () => {
+    navigate(`/scoreboard/${roomCode}`);
+  };
+
+  // delete question
+  const deleteQuestion = async (id) => {
+    if (!window.confirm("Opravdu smazat tuto otázku?")) return;
+
+    await deleteDoc(
+      doc(db, "quizRooms", roomCode, "questions", id)
     );
   };
 
-  // 🔥 START HRY S ODPOČTEM
-  const startGameWithCountdown = () => {
-    if (!questions.length) {
-      alert("Nejsou připravené žádné otázky.");
-      return;
-    }
+  // Drag & Drop reorder
+  const handleDragEnd = async (result) => {
+    if (!result.destination) return;
 
-    setIsCountingDown(true);
-    setCountdownValue(3);
+    const reordered = Array.from(questions);
+    const [moved] = reordered.splice(result.source.index, 1);
+    reordered.splice(result.destination.index, 0, moved);
 
-    let value = 3;
-    const interval = setInterval(() => {
-      value -= 1;
-      if (value <= 0) {
-        clearInterval(interval);
-        setIsCountingDown(false);
-        startQuestion(questions[0].id);
-      } else {
-        setCountdownValue(value);
-      }
-    }, 1000);
+    // update visual order
+    setQuestions(reordered);
+
+    // update Firestore
+    const updates = reordered.map((q, index) => {
+      return updateDoc(
+        doc(db, "quizRooms", roomCode, "questions", q.id),
+        { order: index }
+      );
+    });
+
+    await Promise.all(updates);
   };
-
-  // 🔥 POZASTAVIT / POKRAČOVAT
-  const togglePause = async () => {
-    const newStatus = status === "paused" ? "running" : "paused";
-    await setDoc(
-      doc(db, "quizRooms", roomCode),
-      { status: newStatus },
-      { merge: true }
-    );
-  };
-
-  // 🔥 UKONČIT HRU
-  const endGame = async () => {
-    await setDoc(
-      doc(db, "quizRooms", roomCode),
-      { status: "finished", currentQuestionId: null },
-      { merge: true }
-    );
-    alert("Hra ukončena.");
-  };
-
-  // 🔥 DALŠÍ OTÁZKA
-  const startNextQuestion = () => {
-    if (!questions.length) return;
-
-    if (!currentQuestionId) {
-      startQuestion(questions[0].id);
-      return;
-    }
-
-    const idx = questions.findIndex((q) => q.id === currentQuestionId);
-    const nextIndex = idx + 1;
-
-    if (nextIndex < questions.length) {
-      startQuestion(questions[nextIndex].id);
-    } else {
-      alert("Žádné další otázky.");
-    }
-  };
-
-  const statusLabel = {
-    waiting: "Čeká se na start",
-    running: "Hra běží",
-    paused: "Hra pozastavena",
-    finished: "Hra ukončena",
-  }[status] || status;
 
   return (
-    <div style={styles.page}>
-      <div style={styles.container}>
-        <h1 style={styles.title}>Moderátor – Místnost {roomCode}</h1>
+    <NeonLayout>
+      <div className="neon-card" style={{ maxWidth: 760, margin: "0 auto" }}>
+        {/* HEADER */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            marginBottom: 16,
+          }}
+        >
+          <h1
+            style={{
+              fontSize: 24,
+              fontWeight: 700,
+              background:
+                "linear-gradient(45deg,#a855f7,#ec4899,#00e5a8)",
+              WebkitBackgroundClip: "text",
+              color: "transparent",
+            }}
+          >
+            🎛 Moderátorský panel – {roomCode}
+          </h1>
 
-        <p style={styles.subHeader}>
-          Odtud řídíš hru: start, pauza, další otázky i žebříček.
-        </p>
-
-        {/* 🔥 TLAČÍTKO NA VÝBĚR OTÁZEK Z BANKY */}
-        <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
-  <Link
-    to={`/host/${roomCode}/select-questions`}
-    style={{
-      flex: 1,
-      padding: "10px 14px",
-      background: "rgba(148,163,184,0.25)",
-      borderRadius: 8,
-      color: "white",
-      textAlign: "center",
-      fontSize: 14,
-      textDecoration: "none",
-      fontWeight: 600,
-    }}
-  >
-    📚 Vybrat z databáze
-  </Link>
-
-  <Link
-    to={`/host/${roomCode}/questions`}
-    style={{
-      flex: 1,
-      padding: "10px 14px",
-      background: "rgba(100,200,255,0.25)",
-      borderRadius: 8,
-      color: "white",
-      textAlign: "center",
-      fontSize: 14,
-      textDecoration: "none",
-      fontWeight: 600,
-    }}
-  >
-    ➕ Přidat ručně
-  </Link>
-</div>
-
-        {/* 🔥 ODMANŽMENT STATU */}
-        <div style={styles.section}>
-          <h2 style={styles.header}>Stav hry</h2>
-          <p style={styles.statusPill}>{statusLabel}</p>
-
-          {isCountingDown && (
-            <div style={styles.countdownBox}>
-              <div style={styles.countdownNumber}>{countdownValue}</div>
-              <p style={styles.sub}>Připravte se… hra se spustí!</p>
-            </div>
-          )}
-
-          {!isCountingDown && status !== "finished" && (
-            <div style={styles.btnCol}>
-              <button style={styles.btnPrimary} onClick={startGameWithCountdown}>
-                🚀 Start hry (3…2…1)
-              </button>
-
-              <button style={styles.btnNext} onClick={startNextQuestion}>
-                ⏭ Další otázka
-              </button>
-
-              <button style={styles.btnPause} onClick={togglePause}>
-                {status === "paused" ? "▶ Pokračovat" : "⏸ Pozastavit hru"}
-              </button>
-
-              <button style={styles.btnEnd} onClick={endGame}>
-                🛑 Ukončit hru
-              </button>
-
-              <Link to={`/scoreboard/${roomCode}`} style={styles.btnScore}>
-                📊 Zobrazit žebříček
-              </Link>
-            </div>
-          )}
+          <Link
+            to={`/`}
+            style={{
+              textDecoration: "none",
+              padding: "6px 10px",
+              borderRadius: 12,
+              border: "1px solid rgba(148,163,184,0.4)",
+              color: "white",
+            }}
+          >
+            Domů
+          </Link>
         </div>
 
-        {/* 🔥 HRÁČI */}
-        <div style={styles.section}>
-          <h2 style={styles.header}>Hráči ({players.length})</h2>
-          <ul style={{ margin: 0, paddingLeft: 16 }}>
-            {players.map((p) => (
-              <li key={p.id} style={styles.player}>
-                {p.name} – {p.score ?? 0} b.
-              </li>
-            ))}
-          </ul>
-        </div>
+        {/* ROOM STATUS */}
+        {room && (
+          <div style={{ marginBottom: 20 }}>
+            <p style={{ fontSize: 14, opacity: 0.7 }}>
+              Stav: <b>{room.status}</b>  
+              • Hráčů připojeno: <b>{room.playersCount || players.length}</b>
+            </p>
 
-        {/* 🔥 OTÁZKY */}
-        <div style={styles.section}>
-          <h2 style={styles.header}>Otázky</h2>
-
-          {questions.map((q, index) => {
-            const isActive = currentQuestionId === q.id;
-
-            return (
-              <div
-                key={q.id}
-                style={{
-                  ...styles.questionBox,
-                  border: isActive
-                    ? "1px solid rgba(16,185,129,0.8)"
-                    : "1px solid transparent",
-                }}
+            <div style={{ display: "flex", gap: 10 }}>
+              <Link
+                to={`/host/${roomCode}/questions`}
+                className="neon-btn"
+                style={{ padding: "6px 12px" }}
               >
-                <strong>
-                  {index + 1}. {q.title}
-                </strong>
+                ➕ Přidat manuálně
+              </Link>
 
-                <div style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }}>
-                  Typ:{" "}
-                  {q.type === "abc"
-                    ? "ABC"
-                    : q.type === "open"
-                    ? "Otevřená"
-                    : "Speed"}
-                </div>
+              <Link
+                to={`/host/${roomCode}/select-questions`}
+                className="neon-btn"
+                style={{ padding: "6px 12px" }}
+              >
+                📚 Z databáze
+              </Link>
 
-                {isActive && (
-                  <>
-                    <p style={{ color: "#00e5a8", marginTop: 8 }}>
-                      ▶ Aktuální otázka – odpovědělo: {answersCount}/
-                      {players.length}
-                    </p>
+              <button
+                className="neon-btn"
+                style={{ padding: "6px 12px" }}
+                onClick={stopQuestion}
+              >
+                ⏹ Stop otázky
+              </button>
 
-                    {unansweredPlayers.length > 0 && (
-                      <div style={styles.unansweredBox}>
-                        <div style={{ fontWeight: 600, marginBottom: 4 }}>
-                          Neodpověděli:
+              <button
+                className="neon-btn"
+                style={{ padding: "6px 12px" }}
+                onClick={goScoreboard}
+              >
+                📊 Scoreboard
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* QUESTIONS LIST */}
+        <h2 className="section-title">Otázky v místnosti</h2>
+
+        {questions.length === 0 && (
+          <p style={{ fontSize: 13, opacity: 0.7 }}>
+            Zatím žádné otázky...
+          </p>
+        )}
+
+        <DragDropContext onDragEnd={handleDragEnd}>
+          <Droppable droppableId="questions">
+            {(provided) => (
+              <div
+                {...provided.droppableProps}
+                ref={provided.innerRef}
+                style={{ display: "flex", flexDirection: "column", gap: 10 }}
+              >
+                {questions.map((q, index) => (
+                  <Draggable key={q.id} draggableId={q.id} index={index}>
+                    {(provided) => (
+                      <div
+                        className="question-item"
+                        ref={provided.innerRef}
+                        {...provided.draggableProps}
+                        {...provided.dragHandleProps}
+                      >
+                        <div>
+                          <div style={{ fontSize: 14, fontWeight: 600 }}>
+                            {TYPE_ICONS[q.type]} {q.title}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: 11,
+                              opacity: 0.7,
+                              marginTop: 2,
+                            }}
+                          >
+                            Typ: {TYPE_LABELS[q.type]} • ID: {q.id}
+                          </div>
+
+                          {q.imageUrl && (
+                            <img
+                              src={q.imageUrl}
+                              alt="preview"
+                              style={{
+                                marginTop: 6,
+                                width: 120,
+                                borderRadius: 8,
+                                border:
+                                  "1px solid rgba(148,163,184,0.3)",
+                              }}
+                            />
+                          )}
                         </div>
-                        <div style={styles.unansweredList}>
-                          {unansweredPlayers.map((p) => p.name).join(", ")}
+
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <button
+                            className="neon-btn"
+                            style={{ padding: "6px 12px" }}
+                            onClick={() => startQuestion(q.id)}
+                          >
+                            ▶ Spustit
+                          </button>
+
+                          <button
+                            className="neon-btn"
+                            style={{ padding: "6px 12px", background: "#9b1c1c" }}
+                            onClick={() => deleteQuestion(q.id)}
+                          >
+                            ❌
+                          </button>
                         </div>
                       </div>
                     )}
-                  </>
-                )}
+                  </Draggable>
+                ))}
 
-                <button
-                  style={styles.btnStartQ}
-                  onClick={() => startQuestion(q.id)}
-                >
-                  ▶ Spustit tuto otázku
-                </button>
+                {provided.placeholder}
               </div>
-            );
-          })}
+            )}
+          </Droppable>
+        </DragDropContext>
 
-          {questions.length === 0 && (
-            <p style={{ fontSize: 13, opacity: 0.7 }}>
-              Zatím žádné otázky – přidej je v sekci „Správa otázek“ nebo použij
-              tlačítko výše.
-            </p>
-          )}
-        </div>
+        {/* PLAYERS */}
+        <h2 className="section-title" style={{ marginTop: 30 }}>
+          Hráči v místnosti
+        </h2>
 
-        <div style={styles.footerNote}>
-          Tip: Detailní vyhodnocení odpovědí najdeš v sekci „Otázky“.
+        {players.length === 0 && (
+          <p style={{ fontSize: 13, opacity: 0.7 }}>Nikdo nepřipojen.</p>
+        )}
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {players.map((p) => (
+            <div
+              key={p.id}
+              className="question-item"
+              style={{ justifyContent: "space-between" }}
+            >
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 600 }}>
+                  <span
+                    style={{
+                      display: "inline-block",
+                      width: 12,
+                      height: 12,
+                      background: p.color,
+                      borderRadius: 4,
+                      marginRight: 6,
+                    }}
+                  />
+                  {p.name}
+                </div>
+                <div style={{ fontSize: 12, opacity: 0.7 }}>
+                  Skóre: {p.score}
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
-    </div>
+    </NeonLayout>
   );
 }
+// pages/AdminDashboard.jsx
+import { useEffect, useState } from "react";
+import { useParams, Link, useNavigate } from "react-router-dom";
+import {
+  collection,
+  doc,
+  getDoc,
+  setDoc,
+  deleteDoc,
+  onSnapshot,
+  query,
+  orderBy,
+  updateDoc,
+} from "firebase/firestore";
+import { db } from "../firebaseConfig";
+import NeonLayout from "../components/NeonLayout";
+import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 
-// 🔥 STYLY – BEZE ZMĚNY
-const styles = {
-  page: {
-    minHeight: "100vh",
-    background: "#020617",
-    color: "white",
-    padding: 16,
-  },
-  container: {
-    maxWidth: 700,
-    margin: "0 auto",
-    fontFamily: "Inter, system-ui, sans-serif",
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: 700,
-    background: "linear-gradient(45deg,#a855f7,#ec4899,#00e5a8)",
-    WebkitBackgroundClip: "text",
-    color: "transparent",
-    textAlign: "center",
-    marginBottom: 4,
-  },
-  subHeader: {
-    textAlign: "center",
-    fontSize: 13,
-    opacity: 0.7,
-    marginBottom: 10,
-  },
-  section: {
-    marginBottom: 18,
-    background: "rgba(15,23,42,0.92)",
-    padding: 14,
-    borderRadius: 14,
-    boxShadow: "0 0 18px rgba(15,23,42,0.9)",
-    border: "1px solid rgba(148,163,184,0.3)",
-  },
-  header: {
-    fontSize: 17,
-    marginBottom: 8,
-  },
-  statusPill: {
-    display: "inline-block",
-    padding: "6px 12px",
-    borderRadius: 999,
-    background: "rgba(148,163,184,0.18)",
-    fontSize: 13,
-    marginBottom: 8,
-  },
-  countdownBox: {
-    marginTop: 10,
-    textAlign: "center",
-  },
-  countdownNumber: {
-    fontSize: 40,
-    fontWeight: 800,
-    textShadow: "0 0 20px rgba(236,72,153,0.9)",
-  },
-  sub: {
-    marginTop: 6,
-    opacity: 0.7,
-    fontSize: 13,
-  },
-  btnCol: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 8,
-    marginTop: 10,
-  },
-  btnPrimary: {
-    padding: 10,
-    background: "linear-gradient(45deg,#a855f7,#ec4899,#00e5a8)",
-    borderRadius: 999,
-    border: "none",
-    fontWeight: 700,
-    cursor: "pointer",
-    color: "#071022",
-    fontSize: 15,
-  },
-  btnNext: {
-    padding: 9,
-    background: "linear-gradient(45deg,#22c55e,#16a34a)",
-    borderRadius: 999,
-    border: "none",
-    fontWeight: 600,
-    cursor: "pointer",
-    color: "#071022",
-    fontSize: 14,
-  },
-  btnPause: {
-    padding: 9,
-    background: "linear-gradient(45deg,#facc15,#eab308)",
-    borderRadius: 999,
-    border: "none",
-    fontWeight: 600,
-    cursor: "pointer",
-    color: "#071022",
-    fontSize: 14,
-  },
-  btnEnd: {
-    padding: 9,
-    background: "linear-gradient(45deg,#ef4444,#b91c1c)",
-    borderRadius: 999,
-    border: "none",
-    fontWeight: 600,
-    cursor: "pointer",
-    color: "#f9fafb",
-    fontSize: 14,
-  },
-  btnScore: {
-    display: "block",
-    marginTop: 4,
-    textAlign: "center",
-    padding: 9,
-    background: "rgba(148,163,184,0.25)",
-    borderRadius: 999,
-    fontWeight: 500,
-    fontSize: 14,
-    color: "white",
-    textDecoration: "none",
-  },
-  player: {
-    marginBottom: 4,
-    fontSize: 14,
-  },
-  questionBox: {
-    background: "rgba(15,23,42,0.95)",
-    padding: 10,
-    borderRadius: 12,
-    marginBottom: 10,
-  },
-  unansweredBox: {
-    marginTop: 6,
-    padding: 6,
-    borderRadius: 10,
-    background: "rgba(239,68,68,0.12)",
-    fontSize: 13,
-  },
-  unansweredList: {
-    opacity: 0.9,
-  },
-  btnStartQ: {
-    marginTop: 8,
-    padding: 8,
-    background: "linear-gradient(45deg,#38bdf8,#6366f1)",
-    borderRadius: 999,
-    border: "none",
-    fontWeight: 600,
-    cursor: "pointer",
-    color: "#071022",
-    fontSize: 14,
-  },
-  footerNote: {
-    marginTop: 10,
-    fontSize: 12,
-    opacity: 0.6,
-    textAlign: "center",
-  },
+const TYPE_ICONS = {
+  abc: "🅰",
+  open: "✏️",
+  image: "🖼️",
+  speed: "⚡",
+  multi: "✅",
+  number: "🔢",
+  arrange: "🔁",
 };
+
+const TYPE_LABELS = {
+  abc: "ABC",
+  open: "Otevřená",
+  image: "Obrázková",
+  speed: "Speed",
+  multi: "Multi-select",
+  number: "Číselná",
+  arrange: "Seřazení",
+};
+
+export default function AdminDashboard() {
+  const { roomCode } = useParams();
+  const navigate = useNavigate();
+
+  const [questions, setQuestions] = useState([]);
+  const [players, setPlayers] = useState([]);
+  const [room, setRoom] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  // Load room info
+  useEffect(() => {
+    const roomRef = doc(db, "quizRooms", roomCode);
+
+    const unsub = onSnapshot(roomRef, (snap) => {
+      if (snap.exists()) {
+        setRoom({ id: roomCode, ...snap.data() });
+      }
+    });
+
+    return () => unsub();
+  }, [roomCode]);
+
+  // Load questions
+  useEffect(() => {
+    const qRef = query(
+      collection(db, "quizRooms", roomCode, "questions"),
+      orderBy("order", "asc")
+    );
+
+    const unsub = onSnapshot(qRef, (snap) => {
+      setQuestions(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    });
+
+    return () => unsub();
+  }, [roomCode]);
+
+  // Load players
+  useEffect(() => {
+    const pRef = collection(db, "quizRooms", roomCode, "players");
+
+    const unsub = onSnapshot(pRef, (snap) => {
+      setPlayers(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    });
+
+    return () => unsub();
+  }, [roomCode]);
+
+  // Start question
+  const startQuestion = async (id) => {
+    await updateDoc(doc(db, "quizRooms", roomCode), {
+      currentQuestionId: id,
+      status: "running",
+    });
+  };
+
+  // Stop question
+  const stopQuestion = async () => {
+    await updateDoc(doc(db, "quizRooms", roomCode), {
+      currentQuestionId: null,
+      status: "waiting",
+    });
+  };
+
+  // Go to scoreboard
+  const goScoreboard = () => {
+    navigate(`/scoreboard/${roomCode}`);
+  };
+
+  // delete question
+  const deleteQuestion = async (id) => {
+    if (!window.confirm("Opravdu smazat tuto otázku?")) return;
+
+    await deleteDoc(
+      doc(db, "quizRooms", roomCode, "questions", id)
+    );
+  };
+
+  // Drag & Drop reorder
+  const handleDragEnd = async (result) => {
+    if (!result.destination) return;
+
+    const reordered = Array.from(questions);
+    const [moved] = reordered.splice(result.source.index, 1);
+    reordered.splice(result.destination.index, 0, moved);
+
+    // update visual order
+    setQuestions(reordered);
+
+    // update Firestore
+    const updates = reordered.map((q, index) => {
+      return updateDoc(
+        doc(db, "quizRooms", roomCode, "questions", q.id),
+        { order: index }
+      );
+    });
+
+    await Promise.all(updates);
+  };
+
+  return (
+    <NeonLayout>
+      <div className="neon-card" style={{ maxWidth: 760, margin: "0 auto" }}>
+        {/* HEADER */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            marginBottom: 16,
+          }}
+        >
+          <h1
+            style={{
+              fontSize: 24,
+              fontWeight: 700,
+              background:
+                "linear-gradient(45deg,#a855f7,#ec4899,#00e5a8)",
+              WebkitBackgroundClip: "text",
+              color: "transparent",
+            }}
+          >
+            🎛 Moderátorský panel – {roomCode}
+          </h1>
+
+          <Link
+            to={`/`}
+            style={{
+              textDecoration: "none",
+              padding: "6px 10px",
+              borderRadius: 12,
+              border: "1px solid rgba(148,163,184,0.4)",
+              color: "white",
+            }}
+          >
+            Domů
+          </Link>
+        </div>
+
+        {/* ROOM STATUS */}
+        {room && (
+          <div style={{ marginBottom: 20 }}>
+            <p style={{ fontSize: 14, opacity: 0.7 }}>
+              Stav: <b>{room.status}</b>  
+              • Hráčů připojeno: <b>{room.playersCount || players.length}</b>
+            </p>
+
+            <div style={{ display: "flex", gap: 10 }}>
+              <Link
+                to={`/host/${roomCode}/questions`}
+                className="neon-btn"
+                style={{ padding: "6px 12px" }}
+              >
+                ➕ Přidat manuálně
+              </Link>
+
+              <Link
+                to={`/host/${roomCode}/select-questions`}
+                className="neon-btn"
+                style={{ padding: "6px 12px" }}
+              >
+                📚 Z databáze
+              </Link>
+
+              <button
+                className="neon-btn"
+                style={{ padding: "6px 12px" }}
+                onClick={stopQuestion}
+              >
+                ⏹ Stop otázky
+              </button>
+
+              <button
+                className="neon-btn"
+                style={{ padding: "6px 12px" }}
+                onClick={goScoreboard}
+              >
+                📊 Scoreboard
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* QUESTIONS LIST */}
+        <h2 className="section-title">Otázky v místnosti</h2>
+
+        {questions.length === 0 && (
+          <p style={{ fontSize: 13, opacity: 0.7 }}>
+            Zatím žádné otázky...
+          </p>
+        )}
+
+        <DragDropContext onDragEnd={handleDragEnd}>
+          <Droppable droppableId="questions">
+            {(provided) => (
+              <div
+                {...provided.droppableProps}
+                ref={provided.innerRef}
+                style={{ display: "flex", flexDirection: "column", gap: 10 }}
+              >
+                {questions.map((q, index) => (
+                  <Draggable key={q.id} draggableId={q.id} index={index}>
+                    {(provided) => (
+                      <div
+                        className="question-item"
+                        ref={provided.innerRef}
+                        {...provided.draggableProps}
+                        {...provided.dragHandleProps}
+                      >
+                        <div>
+                          <div style={{ fontSize: 14, fontWeight: 600 }}>
+                            {TYPE_ICONS[q.type]} {q.title}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: 11,
+                              opacity: 0.7,
+                              marginTop: 2,
+                            }}
+                          >
+                            Typ: {TYPE_LABELS[q.type]} • ID: {q.id}
+                          </div>
+
+                          {q.imageUrl && (
+                            <img
+                              src={q.imageUrl}
+                              alt="preview"
+                              style={{
+                                marginTop: 6,
+                                width: 120,
+                                borderRadius: 8,
+                                border:
+                                  "1px solid rgba(148,163,184,0.3)",
+                              }}
+                            />
+                          )}
+                        </div>
+
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <button
+                            className="neon-btn"
+                            style={{ padding: "6px 12px" }}
+                            onClick={() => startQuestion(q.id)}
+                          >
+                            ▶ Spustit
+                          </button>
+
+                          <button
+                            className="neon-btn"
+                            style={{ padding: "6px 12px", background: "#9b1c1c" }}
+                            onClick={() => deleteQuestion(q.id)}
+                          >
+                            ❌
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </Draggable>
+                ))}
+
+                {provided.placeholder}
+              </div>
+            )}
+          </Droppable>
+        </DragDropContext>
+
+        {/* PLAYERS */}
+        <h2 className="section-title" style={{ marginTop: 30 }}>
+          Hráči v místnosti
+        </h2>
+
+        {players.length === 0 && (
+          <p style={{ fontSize: 13, opacity: 0.7 }}>Nikdo nepřipojen.</p>
+        )}
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {players.map((p) => (
+            <div
+              key={p.id}
+              className="question-item"
+              style={{ justifyContent: "space-between" }}
+            >
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 600 }}>
+                  <span
+                    style={{
+                      display: "inline-block",
+                      width: 12,
+                      height: 12,
+                      background: p.color,
+                      borderRadius: 4,
+                      marginRight: 6,
+                    }}
+                  />
+                  {p.name}
+                </div>
+                <div style={{ fontSize: 12, opacity: 0.7 }}>
+                  Skóre: {p.score}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </NeonLayout>
+  );
+}
 
 
