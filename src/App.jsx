@@ -32,6 +32,9 @@ export default function App() {
         <Route path="/import" element={<ImportQuestions />} />
         <Route path="/host/:roomCode/select-questions" element={<SelectQuestions />} />
       </Routes>
+      {/* ⭐ Test Mode */}
+        <Route path="/test" element={<TestMode />} />
+      </Routes>
     </BrowserRouter>
   );
 }
