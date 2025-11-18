@@ -1,3 +1,4 @@
+// pages/Questions.jsx
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import {
@@ -14,12 +15,15 @@ import {
   updateDoc,
   increment,
 } from "firebase/firestore";
-import { db } from "../firebaseConfig";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { db, storage } from "../firebaseConfig";
+import NeonLayout from "../components/NeonLayout";
 
 export default function Questions() {
   const { roomCode } = useParams();
 
   const [questionType, setQuestionType] = useState("abc");
+  const [imageMode, setImageMode] = useState("abc"); // "abc" | "open"
 
   const [title, setTitle] = useState("");
   const [optionA, setOptionA] = useState("");
@@ -27,8 +31,10 @@ export default function Questions() {
   const [optionC, setOptionC] = useState("");
   const [correct, setCorrect] = useState("0"); // pro ABC
   const [openCorrect, setOpenCorrect] = useState(""); // pro open
+  const [imageFile, setImageFile] = useState(null);
 
   const [questions, setQuestions] = useState([]);
+  const [roomSettings, setRoomSettings] = useState({});
 
   // === realtime seznam otázek ===
   useEffect(() => {
@@ -43,6 +49,28 @@ export default function Questions() {
 
     return () => unsub();
   }, [roomCode]);
+
+  // načtení settings pro speed scoring
+  useEffect(() => {
+    const roomRef = doc(db, "quizRooms", roomCode);
+    const unsub = onSnapshot(roomRef, (snap) => {
+      const data = snap.data();
+      if (!data) return;
+      setRoomSettings(data.settings || {});
+    });
+
+    return () => unsub();
+  }, [roomCode]);
+
+  const uploadImageIfNeeded = async () => {
+    if (!imageFile) return null;
+
+    const path = `quizImages/${roomCode}/${Date.now()}_${imageFile.name}`;
+    const storageRef = ref(storage, path);
+    await uploadBytes(storageRef, imageFile);
+    const url = await getDownloadURL(storageRef);
+    return url;
+  };
 
   // Přidání otázky
   const addQuestion = async () => {
@@ -76,13 +104,48 @@ export default function Questions() {
         options: [],
         correctAnswer: openCorrect.trim(),
       };
-    } else {
-      // speed
+    } else if (questionType === "speed") {
       payload = {
         ...base,
         options: [],
         correctAnswer: "",
       };
+    } else if (questionType === "image") {
+      if (!imageFile) {
+        alert("Vyber obrázek pro otázku.");
+        return;
+      }
+      const url = await uploadImageIfNeeded();
+      if (!url) {
+        alert("Nahrání obrázku se nepodařilo.");
+        return;
+      }
+
+      if (imageMode === "abc") {
+        if (!optionA || !optionB || !optionC) {
+          alert("Vyplň všechny tři možnosti.");
+          return;
+        }
+        payload = {
+          ...base,
+          imageUrl: url,
+          imageMode: "abc",
+          options: [optionA, optionB, optionC],
+          correctAnswer: Number(correct),
+        };
+      } else {
+        if (!openCorrect.trim()) {
+          alert("Zadej správnou odpověď pro obrázkovou otázku.");
+          return;
+        }
+        payload = {
+          ...base,
+          imageUrl: url,
+          imageMode: "open",
+          options: [],
+          correctAnswer: openCorrect.trim(),
+        };
+      }
     }
 
     await addDoc(collection(db, "quizRooms", roomCode, "questions"), payload);
@@ -93,6 +156,7 @@ export default function Questions() {
     setOptionC("");
     setCorrect("0");
     setOpenCorrect("");
+    setImageFile(null);
   };
 
   // Spustit otázku
@@ -105,9 +169,75 @@ export default function Questions() {
     alert("Otázka spuštěna!");
   };
 
-  // Vyhodnotit otázku (abc / open / speed)
+  // Vyhodnocení speed scoringu podle settings
+  const applySpeedScoring = async (withTime, scoringMode) => {
+    if (!withTime.length) return;
+
+    // seřadíme podle času
+    withTime.sort(
+      (a, b) => a.timeSubmitted.toMillis() - b.timeSubmitted.toMillis()
+    );
+
+    if (scoringMode === "top3") {
+      const winners = withTime.slice(0, 3);
+      const weights = [3, 2, 1];
+      for (let i = 0; i < winners.length; i++) {
+        const ans = winners[i];
+        const playerRef = doc(
+          db,
+          "quizRooms",
+          roomCode,
+          "players",
+          ans.playerId
+        );
+        await updateDoc(playerRef, {
+          score: increment(weights[i]),
+          fastestWins: increment(i === 0 ? 1 : 0),
+          reactionScore: increment(weights[i]),
+        });
+      }
+    } else if (scoringMode === "scale") {
+      const maxPoints = 5;
+      const total = withTime.length;
+      for (let i = 0; i < withTime.length; i++) {
+        const ans = withTime[i];
+        const points = Math.max(
+          1,
+          maxPoints - Math.floor((i / (total - 1 || 1)) * (maxPoints - 1))
+        );
+        const playerRef = doc(
+          db,
+          "quizRooms",
+          roomCode,
+          "players",
+          ans.playerId
+        );
+        await updateDoc(playerRef, {
+          score: increment(points),
+          fastestWins: increment(i === 0 ? 1 : 0),
+          reactionScore: increment(points),
+        });
+      }
+    } else {
+      // default: pouze první
+      const fastest = withTime[0];
+      const playerRef = doc(
+        db,
+        "quizRooms",
+        roomCode,
+        "players",
+        fastest.playerId
+      );
+      await updateDoc(playerRef, {
+        score: increment(1),
+        fastestWins: increment(1),
+        reactionScore: increment(3),
+      });
+    }
+  };
+
+  // Vyhodnotit otázku (abc / open / speed / image)
   const evaluateQuestion = async (questionId) => {
-    // otázka
     const qRef = doc(db, "quizRooms", roomCode, "questions", questionId);
     const qSnap = await getDoc(qRef);
     if (!qSnap.exists()) {
@@ -126,35 +256,33 @@ export default function Questions() {
     if (allAnswers.length === 0) {
       alert("Na tuto otázku nikdo neodpověděl.");
     } else if (question.type === "speed") {
-      // rychlostní – bod pro nejrychlejšího
       const withTime = allAnswers.filter((a) => a.timeSubmitted);
-      if (withTime.length) {
-        withTime.sort(
-          (a, b) =>
-            a.timeSubmitted.toMillis() - b.timeSubmitted.toMillis()
-        );
-        const fastest = withTime[0];
-        const playerRef = doc(
-          db,
-          "quizRooms",
-          roomCode,
-          "players",
-          fastest.playerId
-        );
-        await updateDoc(playerRef, {
-          score: increment(1),
-        });
-      }
+      const scoringMode =
+        roomSettings.speedScoringMode || "first";
+      await applySpeedScoring(withTime, scoringMode);
     } else {
-      // abc / open
+      // abc / open / image
       for (const ans of allAnswers) {
         let isCorrect = false;
+
         if (question.type === "abc") {
           isCorrect = ans.answer === question.correctAnswer;
         } else if (question.type === "open") {
           if (
             typeof ans.answer === "string" &&
             typeof question.correctAnswer === "string"
+          ) {
+            isCorrect =
+              ans.answer.trim().toLowerCase() ===
+              question.correctAnswer.trim().toLowerCase();
+          }
+        } else if (question.type === "image") {
+          // imageMode rozhoduje, jestli číslo nebo text
+          if (typeof question.correctAnswer === "number") {
+            isCorrect = ans.answer === question.correctAnswer;
+          } else if (
+            typeof question.correctAnswer === "string" &&
+            typeof ans.answer === "string"
           ) {
             isCorrect =
               ans.answer.trim().toLowerCase() ===
@@ -185,19 +313,22 @@ export default function Questions() {
     alert("Otázka vyhodnocena!");
   };
 
-  const typeLabel = (t) =>
-    t === "abc" ? "ABC" : t === "open" ? "Otevřená" : "Rychlostní";
+  const typeLabel = (t) => {
+    if (t === "abc") return "ABC";
+    if (t === "open") return "Otevřená";
+    if (t === "speed") return "Rychlostní";
+    if (t === "image") return "Obrázková";
+    return t;
+  };
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "#020617",
-        color: "white",
-        padding: 24,
-      }}
-    >
-      <div style={{ maxWidth: 700, margin: "0 auto" }}>
+    <NeonLayout maxWidth={720}>
+      <div
+        style={{
+          color: "white",
+          padding: 4,
+        }}
+      >
         <h1
           style={{
             fontSize: 24,
@@ -254,7 +385,10 @@ export default function Questions() {
           >
             <option value="abc">ABC (3 možnosti)</option>
             <option value="open">Otevřená odpověď</option>
-            <option value="speed">Rychlostní (kdo odpoví první)</option>
+            <option value="speed">
+              Rychlostní (kdo odpoví první / top3 / škála)
+            </option>
+            <option value="image">Obrázková otázka</option>
           </select>
 
           <label style={labelStyle}>Text otázky</label>
@@ -265,7 +399,39 @@ export default function Questions() {
             placeholder="Zadej text otázky…"
           />
 
-          {questionType === "abc" && (
+          {/* obrázkový typ */}
+          {questionType === "image" && (
+            <>
+              <label style={labelStyle}>Obrázek</label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => setImageFile(e.target.files?.[0] || null)}
+                style={{
+                  ...inputStyle,
+                  padding: 6,
+                  cursor: "pointer",
+                }}
+              />
+
+              <label style={labelStyle}>Typ odpovědi</label>
+              <select
+                value={imageMode}
+                onChange={(e) => setImageMode(e.target.value)}
+                style={{
+                  ...inputStyle,
+                  background: "rgba(15,23,42,0.9)",
+                }}
+              >
+                <option value="abc">ABC s možnostmi</option>
+                <option value="open">Otevřená odpověď k obrázku</option>
+              </select>
+            </>
+          )}
+
+          {/* ABC */}
+          {(questionType === "abc" ||
+            (questionType === "image" && imageMode === "abc")) && (
             <>
               <label style={labelStyle}>Možnost A</label>
               <input
@@ -304,7 +470,9 @@ export default function Questions() {
             </>
           )}
 
-          {questionType === "open" && (
+          {/* otevřená */}
+          {(questionType === "open" ||
+            (questionType === "image" && imageMode === "open")) && (
             <>
               <label style={labelStyle}>Správná odpověď (text)</label>
               <input
@@ -324,25 +492,17 @@ export default function Questions() {
                 opacity: 0.7,
               }}
             >
-              Rychlostní otázka – bod získá hráč, který odpoví jako
-              první. Text odpovědi se nevyhodnocuje.
+              Rychlostní otázka – bodování se řídí nastavením místnosti
+              (pouze první / top 3 / škála podle rychlosti).
             </p>
           )}
 
           <button
             onClick={addQuestion}
+            className="neon-btn"
             style={{
               marginTop: 16,
-              padding: "12px 18px",
-              borderRadius: 999,
-              border: "none",
-              fontWeight: 700,
-              cursor: "pointer",
-              background:
-                "linear-gradient(45deg,#a855f7,#ec4899,#00e5a8)",
-              color: "#020617",
               width: "100%",
-              boxShadow: "0 0 18px rgba(236,72,153,0.7)",
             }}
           >
             ➕ Uložit otázku
@@ -383,6 +543,25 @@ export default function Questions() {
               </div>
               <strong style={{ fontSize: 15 }}>{q.title}</strong>
 
+              {q.type === "image" && q.imageUrl && (
+                <div
+                  style={{
+                    marginTop: 6,
+                  }}
+                >
+                  <img
+                    src={q.imageUrl}
+                    alt="quiz"
+                    style={{
+                      maxWidth: "100%",
+                      borderRadius: 10,
+                      border:
+                        "1px solid rgba(148,163,184,0.4)",
+                    }}
+                  />
+                </div>
+              )}
+
               {q.type === "abc" && q.options && (
                 <div
                   style={{
@@ -413,6 +592,38 @@ export default function Questions() {
                 </div>
               )}
 
+              {q.type === "image" && (
+                <div
+                  style={{
+                    marginTop: 6,
+                    fontSize: 13,
+                    opacity: 0.9,
+                  }}
+                >
+                  {q.imageMode === "abc" && q.options?.length === 3 && (
+                    <>
+                      <div>A: {q.options[0]}</div>
+                      <div>B: {q.options[1]}</div>
+                      <div>C: {q.options[2]}</div>
+                      <div
+                        style={{
+                          color: "#00e5a8",
+                          marginTop: 4,
+                        }}
+                      >
+                        ✔ Správná:{" "}
+                        {["A", "B", "C"][q.correctAnswer]}
+                      </div>
+                    </>
+                  )}
+                  {q.imageMode === "open" && (
+                    <div style={{ color: "#22c55e" }}>
+                      ✔ Správná odpověď: {q.correctAnswer}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {q.type === "speed" && (
                 <div
                   style={{
@@ -422,7 +633,8 @@ export default function Questions() {
                     color: "#38bdf8",
                   }}
                 >
-                  ⚡ Rychlostní otázka – bod pro nejrychlejšího
+                  ⚡ Rychlostní otázka – bodování podle nastavení
+                  místnosti.
                 </div>
               )}
 
@@ -458,7 +670,7 @@ export default function Questions() {
           )}
         </div>
       </div>
-    </div>
+    </NeonLayout>
   );
 }
 
