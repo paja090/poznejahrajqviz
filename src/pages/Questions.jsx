@@ -712,19 +712,17 @@ export default function Questions() {
 
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {questions.map((q) => (
-              <div
-                key={q.id}
-                style={{
-                  padding: 8,
-                  borderRadius: 10,
-                  border: "1px solid rgba(148,163,184,0.35)",
-                  background: "rgba(15,23,42,0.8)",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  gap: 8,
-                }}
-              >
+              <div key={q.id} className="question-item">
+  <div>
+    <div style={{ fontSize: 14, fontWeight: 600 }}>
+      {TYPE_ICONS[q.type]} {q.title}
+    </div>
+    <div style={{ fontSize: 12, opacity: 0.7 }}>
+      Typ: {TYPE_LABELS[q.type]} • ID: {q.id}
+    </div>
+  </div>
+</div>
+
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 600 }}>
                     {TYPE_ICONS[q.type] || "❓"} {q.title}
