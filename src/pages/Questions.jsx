@@ -645,16 +645,34 @@ export default function Questions() {
           </select>
         </div>
 
-        {/* Text otázky */}
-        <div style={{ marginBottom: 10 }}>
-          <label className="neon-label">Text otázky</label>
-          <input
-            className="neon-input"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Např. V kterém roce vznikla Česká republika?"
-          />
-        </div>
+      {/* Typ otázky */}
+<div className="form-section">
+  <label className="form-label">Typ otázky</label>
+  <select
+    className="form-select"
+    value={questionType}
+    onChange={(e) => setQuestionType(e.target.value)}
+  >
+    <option value="abc">🅰 ABC</option>
+    <option value="open">✏️ Otevřená</option>
+    <option value="speed">⚡ Speed</option>
+    <option value="image">🖼 Obrázková</option>
+    <option value="multi">✅ Multi-select</option>
+    <option value="number">🔢 Číselná</option>
+    <option value="arrange">🔁 Seřazení</option>
+  </select>
+</div>
+
+{/* Text otázky */}
+<div className="form-section">
+  <label className="form-label">Text otázky</label>
+  <input
+    className="form-input"
+    value={title}
+    onChange={(e) => setTitle(e.target.value)}
+    placeholder="Např. V kterém roce vznikla Česká republika?"
+  />
+</div>
 
         {/* Typově specifické údaje */}
         {renderTypeSpecificFields()}
