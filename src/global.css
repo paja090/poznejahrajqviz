@@ -213,3 +213,17 @@ body {
     border-radius: 16px;
   }
 }
+@keyframes floatUp {
+  0% {
+    transform: translate(-50%, 6px);
+    opacity: 0;
+  }
+  40% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -18px);
+    opacity: 0;
+  }
+}
+
