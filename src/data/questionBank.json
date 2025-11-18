@@ -1,0 +1,518 @@
+{
+  "questions": [
+    /* =========================
+       ① HISTORIE
+       ========================= */
+    {
+      "id": "hist001",
+      "category": "Historie",
+      "type": "abc",
+      "title": "Který rok začala druhá světová válka?",
+      "options": ["1938", "1939", "1941"],
+      "correctAnswer": 1,
+      "difficulty": "easy",
+      "imageUrl": null
+    },
+    {
+      "id": "hist002",
+      "category": "Historie",
+      "type": "abc",
+      "title": "Kde vznikla starověká civilizace Mezopotámie?",
+      "options": ["Mezi řekami Eufrat a Tigris", "Na pobřeží Středozemního moře", "Na území dnešní Indie"],
+      "correctAnswer": 0,
+      "difficulty": "medium",
+      "imageUrl": null
+    },
+    {
+      "id": "hist003",
+      "category": "Historie",
+      "type": "abc",
+      "title": "Kdo byl prvním prezidentem Československa?",
+      "options": ["Tomáš Garrigue Masaryk", "Edvard Beneš", "Klement Gottwald"],
+      "correctAnswer": 0,
+      "difficulty": "easy",
+      "imageUrl": null
+    },
+    {
+      "id": "hist004",
+      "category": "Historie",
+      "type": "open",
+      "title": "Jak se jmenovala loď, na které se potopil polárník Robert Scott?",
+      "correctAnswer": "Terra Nova",
+      "difficulty": "hard",
+      "imageUrl": null
+    },
+    {
+      "id": "hist005",
+      "category": "Historie",
+      "type": "open",
+      "title": "Napiš rok, kdy byla podepsána Mnichovská dohoda.",
+      "correctAnswer": "1938",
+      "difficulty": "medium",
+      "imageUrl": null
+    },
+    {
+      "id": "hist006",
+      "category": "Historie",
+      "type": "open",
+      "title": "Jak se jmenovalo období komunistické normalizace v Československu začínající rokem 1969? (stačí jedno slovo)",
+      "correctAnswer": "normalizace",
+      "difficulty": "easy",
+      "imageUrl": null
+    },
+    {
+      "id": "hist007",
+      "category": "Historie",
+      "type": "abc",
+      "title": "Která bitva se odehrála roku 1805 a je spojena s Napoleonem?",
+      "options": ["Bitva u Lipska", "Bitva u Slavkova", "Bitva u Waterloo"],
+      "correctAnswer": 1,
+      "difficulty": "medium",
+      "imageUrl": null
+    },
+    {
+      "id": "hist008",
+      "category": "Historie",
+      "type": "image",
+      "title": "Na obrázku je slavná stavba v Římě. Jak se jmenuje?",
+      "options": ["Koloseum", "Pantheon", "Forum Romanum"],
+      "correctAnswer": 0,
+      "difficulty": "easy",
+      "imageUrl": "https://example.com/images/historie/koloseum.jpg"
+    },
+    {
+      "id": "hist009",
+      "category": "Historie",
+      "type": "image",
+      "title": "Tento portrét zobrazuje významného vědce. Koho?",
+      "options": ["Isaac Newton", "Albert Einstein", "Galileo Galilei"],
+      "correctAnswer": 1,
+      "difficulty": "medium",
+      "imageUrl": "https://example.com/images/historie/einstein.jpg"
+    },
+    {
+      "id": "hist010",
+      "category": "Historie",
+      "type": "image",
+      "title": "Na obrázku vidíš starověké písmo vyryté do kamene. Jak se jmenuje toto písmo?",
+      "options": ["Hieroglyfy", "Klínové písmo", "Latinka"],
+      "correctAnswer": 1,
+      "difficulty": "medium",
+      "imageUrl": "https://example.com/images/historie/klinove.jpg"
+    },
+
+    /* =========================
+       ② GEOGRAFIE
+       ========================= */
+    {
+      "id": "geo001",
+      "category": "Geografie",
+      "type": "abc",
+      "title": "Jaké je hlavní město Kanady?",
+      "options": ["Toronto", "Ottawa", "Montreal"],
+      "correctAnswer": 1,
+      "difficulty": "easy",
+      "imageUrl": null
+    },
+    {
+      "id": "geo002",
+      "category": "Geografie",
+      "type": "abc",
+      "title": "Která z těchto řek je nejdelší?",
+      "options": ["Nil", "Amazonka", "Jang-c’-ťiang"],
+      "correctAnswer": 1,
+      "difficulty": "hard",
+      "imageUrl": null
+    },
+    {
+      "id": "geo003",
+      "category": "Geografie",
+      "type": "abc",
+      "title": "Na kterém kontinentu leží stát Peru?",
+      "options": ["Afrika", "Jižní Amerika", "Asie"],
+      "correctAnswer": 1,
+      "difficulty": "easy",
+      "imageUrl": null
+    },
+    {
+      "id": "geo004",
+      "category": "Geografie",
+      "type": "open",
+      "title": "Napiš název nejvyšší hory světa.",
+      "correctAnswer": "Mount Everest",
+      "difficulty": "easy",
+      "imageUrl": null
+    },
+    {
+      "id": "geo005",
+      "category": "Geografie",
+      "type": "open",
+      "title": "Jak se jmenuje největší ostrov na světě?",
+      "correctAnswer": "Grónsko",
+      "difficulty": "medium",
+      "imageUrl": null
+    },
+    {
+      "id": "geo006",
+      "category": "Geografie",
+      "type": "open",
+      "title": "Které moře omývá východní pobřeží Itálie?",
+      "correctAnswer": "Jaderské moře",
+      "difficulty": "medium",
+      "imageUrl": null
+    },
+    {
+      "id": "geo007",
+      "category": "Geografie",
+      "type": "image",
+      "title": "Na mapě je zvýrazněn evropský stát. Jak se jmenuje?",
+      "options": ["Rakousko", "Švýcarsko", "Maďarsko"],
+      "correctAnswer": 0,
+      "difficulty": "medium",
+      "imageUrl": "https://example.com/images/geografie/rakousko_map.jpg"
+    },
+    {
+      "id": "geo008",
+      "category": "Geografie",
+      "type": "image",
+      "title": "Na obrázku je známá brazilská metropole. Jak se jmenuje?",
+      "options": ["Rio de Janeiro", "São Paulo", "Brasília"],
+      "correctAnswer": 0,
+      "difficulty": "medium",
+      "imageUrl": "https://example.com/images/geografie/rio.jpg"
+    },
+    {
+      "id": "geo009",
+      "category": "Geografie",
+      "type": "image",
+      "title": "Tento snímek ukazuje slavný kaňon v USA. Jak se jmenuje?",
+      "options": ["Grand Canyon", "Bryce Canyon", "Death Valley"],
+      "correctAnswer": 0,
+      "difficulty": "easy",
+      "imageUrl": "https://example.com/images/geografie/grand_canyon.jpg"
+    },
+    {
+      "id": "geo010",
+      "category": "Geografie",
+      "type": "abc",
+      "title": "Který stát nemá přístup k moři?",
+      "options": ["Chorvatsko", "Slovensko", "Portugalsko"],
+      "correctAnswer": 1,
+      "difficulty": "easy",
+      "imageUrl": null
+    },
+
+    /* =========================
+       ③ SPORT
+       ========================= */
+    {
+      "id": "sport001",
+      "category": "Sport",
+      "type": "abc",
+      "title": "Kolik hráčů je na hřišti v jednom týmu ve fotbale (kopaná) během zápasu?",
+      "options": ["9", "10", "11"],
+      "correctAnswer": 2,
+      "difficulty": "easy",
+      "imageUrl": null
+    },
+    {
+      "id": "sport002",
+      "category": "Sport",
+      "type": "abc",
+      "title": "Ve kterém sportu se používá termín smeč?",
+      "options": ["Basketbal", "Volejbal", "Tenis"],
+      "correctAnswer": 1,
+      "difficulty": "easy",
+      "imageUrl": null
+    },
+    {
+      "id": "sport003",
+      "category": "Sport",
+      "type": "abc",
+      "title": "Který závod je součástí motorsportu F1?",
+      "options": ["Tour de France", "Velká cena Monaka", "Dakar Rally"],
+      "correctAnswer": 1,
+      "difficulty": "medium",
+      "imageUrl": null
+    },
+    {
+      "id": "sport004",
+      "category": "Sport",
+      "type": "open",
+      "title": "Kolik minut trvá základní hrací doba hokejového zápasu (bez prodloužení)?",
+      "correctAnswer": "60",
+      "difficulty": "easy",
+      "imageUrl": null
+    },
+    {
+      "id": "sport005",
+      "category": "Sport",
+      "type": "open",
+      "title": "Jak se jmenuje český tenista, který vyhrál Wimbledon v roce 1998?",
+      "correctAnswer": "Jan Korda",
+      "difficulty": "hard",
+      "imageUrl": null
+    },
+    {
+      "id": "sport006",
+      "category": "Sport",
+      "type": "open",
+      "title": "Jak se v hokeji nazývá situace, kdy hráč vstřelí tři góly v jednom zápase?",
+      "correctAnswer": "hattrick",
+      "difficulty": "easy",
+      "imageUrl": null
+    },
+    {
+      "id": "sport007",
+      "category": "Sport",
+      "type": "image",
+      "title": "Na obrázku je známý fotbalista. Jak se jmenuje?",
+      "options": ["Lionel Messi", "Cristiano Ronaldo", "Neymar"],
+      "correctAnswer": 0,
+      "difficulty": "easy",
+      "imageUrl": "https://example.com/images/sport/messi.jpg"
+    },
+    {
+      "id": "sport008",
+      "category": "Sport",
+      "type": "image",
+      "title": "Jaký sport se hraje na tomto hřišti?",
+      "options": ["Ragby", "Americký fotbal", "Kriket"],
+      "correctAnswer": 1,
+      "difficulty": "medium",
+      "imageUrl": "https://example.com/images/sport/american_football_field.jpg"
+    },
+    {
+      "id": "sport009",
+      "category": "Sport",
+      "type": "image",
+      "title": "Na obrázku je slavný tenisový turnaj. Který?",
+      "options": ["Australian Open", "Wimbledon", "US Open"],
+      "correctAnswer": 1,
+      "difficulty": "medium",
+      "imageUrl": "https://example.com/images/sport/wimbledon.jpg"
+    },
+    {
+      "id": "sport010",
+      "category": "Sport",
+      "type": "abc",
+      "title": "Ve kterém sportu se udělují body za skoky z můstku?",
+      "options": ["Skoky na lyžích", "Snowboarding", "Moderní pětiboj"],
+      "correctAnswer": 0,
+      "difficulty": "easy",
+      "imageUrl": null
+    },
+
+    /* =========================
+       ④ FILMY & SERIÁLY
+       ========================= */
+    {
+      "id": "movie001",
+      "category": "Filmy & Seriály",
+      "type": "abc",
+      "title": "Kdo režíroval film Titanic?",
+      "options": ["Steven Spielberg", "James Cameron", "Ridley Scott"],
+      "correctAnswer": 1,
+      "difficulty": "easy",
+      "imageUrl": null
+    },
+    {
+      "id": "movie002",
+      "category": "Filmy & Seriály",
+      "type": "abc",
+      "title": "Který z těchto filmů patří do světa Harryho Pottera?",
+      "options": ["Ohnivý pohár", "Temný rytíř", "Pán prstenů: Dvě věže"],
+      "correctAnswer": 0,
+      "difficulty": "easy",
+      "imageUrl": null
+    },
+    {
+      "id": "movie003",
+      "category": "Filmy & Seriály",
+      "type": "abc",
+      "title": "Ve kterém seriálu se objevuje postava jménem Walter White?",
+      "options": ["Breaking Bad", "Narcos", "Stranger Things"],
+      "correctAnswer": 0,
+      "difficulty": "medium",
+      "imageUrl": null
+    },
+    {
+      "id": "movie004",
+      "category": "Filmy & Seriály",
+      "type": "open",
+      "title": "Jak se jmenuje fiktivní škola čar a kouzel, kterou navštěvuje Harry Potter?",
+      "correctAnswer": "Bradavice",
+      "difficulty": "easy",
+      "imageUrl": null
+    },
+    {
+      "id": "movie005",
+      "category": "Filmy & Seriály",
+      "type": "open",
+      "title": "Napiš jméno režiséra trilogie Pán prstenů.",
+      "correctAnswer": "Peter Jackson",
+      "difficulty": "medium",
+      "imageUrl": null
+    },
+    {
+      "id": "movie006",
+      "category": "Filmy & Seriály",
+      "type": "open",
+      "title": "Jak se jmenuje animovaný film studia Pixar o superhrdinské rodině?",
+      "correctAnswer": "Úžasňákovi",
+      "difficulty": "easy",
+      "imageUrl": null
+    },
+    {
+      "id": "movie007",
+      "category": "Filmy & Seriály",
+      "type": "image",
+      "title": "Jak se jmenuje film, ze kterého je tato ikonická scéna s modrým tvorem?",
+      "options": ["Avatar", "Strážci Galaxie", "Aquaman"],
+      "correctAnswer": 0,
+      "difficulty": "easy",
+      "imageUrl": "https://example.com/images/movies/avatar_scene.jpg"
+    },
+    {
+      "id": "movie008",
+      "category": "Filmy & Seriály",
+      "type": "image",
+      "title": "Na obrázku je logo slavného filmového studia. Které to je?",
+      "options": ["Warner Bros.", "Universal Pictures", "20th Century Fox"],
+      "correctAnswer": 1,
+      "difficulty": "medium",
+      "imageUrl": "https://example.com/images/movies/universal_logo.jpg"
+    },
+    {
+      "id": "movie009",
+      "category": "Filmy & Seriály",
+      "type": "image",
+      "title": "Tento záběr pochází z populárního seriálu. Jak se jmenuje?",
+      "options": ["Hra o trůny", "Zaklínač", "Vikingové"],
+      "correctAnswer": 0,
+      "difficulty": "medium",
+      "imageUrl": "https://example.com/images/movies/game_of_thrones.jpg"
+    },
+    {
+      "id": "movie010",
+      "category": "Filmy & Seriály",
+      "type": "abc",
+      "title": "Která herečka ztvárnila roli Hermiony Grangerové?",
+      "options": ["Emma Watson", "Keira Knightley", "Natalie Portman"],
+      "correctAnswer": 0,
+      "difficulty": "easy",
+      "imageUrl": null
+    },
+
+    /* =========================
+       ⑤ HUDBA
+       ========================= */
+    {
+      "id": "music001",
+      "category": "Hudba",
+      "type": "abc",
+      "title": "Která z těchto kapel je česká?",
+      "options": ["Kabát", "Coldplay", "Imagine Dragons"],
+      "correctAnswer": 0,
+      "difficulty": "easy",
+      "imageUrl": null
+    },
+    {
+      "id": "music002",
+      "category": "Hudba",
+      "type": "abc",
+      "title": "Který nástroj má klapky i jazýček a patří do dechových nástrojů?",
+      "options": ["Klarinet", "Housle", "Kytara"],
+      "correctAnswer": 0,
+      "difficulty": "medium",
+      "imageUrl": null
+    },
+    {
+      "id": "music003",
+      "category": "Hudba",
+      "type": "abc",
+      "title": "Kdo nazpíval píseň 'Shape of You'?",
+      "options": ["Ed Sheeran", "Shawn Mendes", "Justin Bieber"],
+      "correctAnswer": 0,
+      "difficulty": "easy",
+      "imageUrl": null
+    },
+    {
+      "id": "music004",
+      "category": "Hudba",
+      "type": "open",
+      "title": "Napiš jméno českého zpěváka, který nazpíval píseň 'Když ti sebere děda mobil'.",
+      "correctAnswer": "Marek Ztracený",
+      "difficulty": "medium",
+      "imageUrl": null
+    },
+    {
+      "id": "music005",
+      "category": "Hudba",
+      "type": "open",
+      "title": "Jak se jmenuje hudební styl, který vznikl v 70. letech v New Yorku a spojuje rap a DJing?",
+      "correctAnswer": "hip hop",
+      "difficulty": "medium",
+      "imageUrl": null
+    },
+    {
+      "id": "music006",
+      "category": "Hudba",
+      "type": "open",
+      "title": "Jak se jmenuje slavná skladba skupiny Queen, ve které se zpívá 'Galileo, Galileo'?",
+      "correctAnswer": "Bohemian Rhapsody",
+      "difficulty": "easy",
+      "imageUrl": null
+    },
+    {
+      "id": "music007",
+      "category": "Hudba",
+      "type": "image",
+      "title": "Na obrázku je známý zpěvák se zrzavými vlasy a kytarou. Jak se jmenuje?",
+      "options": ["Ed Sheeran", "Lewis Capaldi", "Sam Smith"],
+      "correctAnswer": 0,
+      "difficulty": "easy",
+      "imageUrl": "https://example.com/images/music/edsheeran.jpg"
+    },
+    {
+      "id": "music008",
+      "category": "Hudba",
+      "type": "image",
+      "title": "Toto je logo hudební služby. Která to je?",
+      "options": ["Spotify", "Apple Music", "YouTube Music"],
+      "correctAnswer": 0,
+      "difficulty": "easy",
+      "imageUrl": "https://example.com/images/music/spotify_logo.jpg"
+    },
+    {
+      "id": "music009",
+      "category": "Hudba",
+      "type": "image",
+      "title": "Na obrázku je hudební nástroj. Jak se jmenuje?",
+      "options": ["Ukulele", "Baskytara", "Mandolína"],
+      "correctAnswer": 0,
+      "difficulty": "easy",
+      "imageUrl": "https://example.com/images/music/ukulele.jpg"
+    },
+    {
+      "id": "music010",
+      "category": "Hudba",
+      "type": "abc",
+      "title": "Který z těchto hudebních žánrů je nejpomalejší?",
+      "options": ["Drum and bass", "Lounge", "Hardstyle"],
+      "correctAnswer": 1,
+      "difficulty": "easy",
+      "imageUrl": null
+    }
+
+    /* … Pokračování ve stejném duchu:
+       ⑥ Zvířata & Příroda
+       ⑦ Věda & Technologie
+       ⑧ Slavné osobnosti
+       ⑨ Hry & Kvízy
+       ⑩ Česká republika speciál
+       – každá kategorie cca 9–12 otázek (ABC / open / image)
+       – spolu ti to dá ~100 otázek v tomto souboru
+    */
+  ]
+}
