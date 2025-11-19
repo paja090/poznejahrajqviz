@@ -1,5 +1,5 @@
 // pages/Lobby.jsx
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { db } from "../firebaseConfig";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import { collection, onSnapshot, doc } from "firebase/firestore";
@@ -11,7 +11,31 @@ export default function Lobby() {
   const { roomCode } = useParams();
   const [search] = useSearchParams();
   const navigate = useNavigate();
-  const playerId = search.get("player");
+  const searchPlayerId = search.get("player");
+
+  useEffect(() => {
+    if (!searchPlayerId || typeof window === "undefined") return;
+    try {
+      localStorage.setItem("playerId", searchPlayerId);
+      localStorage.setItem("playerRoom", roomCode);
+    } catch (err) {
+      console.warn("Nepodařilo se uložit hráčské ID", err);
+    }
+  }, [searchPlayerId, roomCode]);
+
+  const playerId = useMemo(() => {
+    if (searchPlayerId) return searchPlayerId;
+    if (typeof window === "undefined") return null;
+
+    try {
+      const storedRoom = localStorage.getItem("playerRoom");
+      if (storedRoom !== roomCode) return null;
+      return localStorage.getItem("playerId");
+    } catch (err) {
+      console.warn("Nepodařilo se načíst hráčské ID", err);
+      return null;
+    }
+  }, [searchPlayerId, roomCode]);
 
   const [players, setPlayers] = useState([]);
   const [status, setStatus] = useState("waiting");

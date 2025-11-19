@@ -1,12 +1,7 @@
 // pages/Scoreboard.jsx
 import { useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import {
-  collection,
-  doc,
-  onSnapshot,
-  getDocs,
-} from "firebase/firestore";
+import { collection, onSnapshot } from "firebase/firestore";
 
 import { db } from "../firebaseConfig";
 import NeonLayout from "../components/NeonLayout";
@@ -40,14 +35,12 @@ export default function Scoreboard() {
     });
   }, [roomCode]);
 
-  // ANSWERS (snapshot – pro scoreboard stačí)
+  // ANSWERS (realtime – scoreboard reaguje na dění ve hře)
   useEffect(() => {
-    const load = async () => {
-      const ref = collection(db, "quizRooms", roomCode, "answers");
-      const snap = await getDocs(ref);
+    const ref = collection(db, "quizRooms", roomCode, "answers");
+    return onSnapshot(ref, (snap) => {
       setAnswers(snap.docs.map((d) => d.data()));
-    };
-    load();
+    });
   }, [roomCode]);
 
   // mapy pro rychlý přístup
@@ -136,7 +129,7 @@ export default function Scoreboard() {
 
         <div style={{ marginBottom: 14 }}>
           <Link
-            to={`/host/${roomCode}`}
+            to={`/host/${roomCode}/dashboard`}
             style={{
               fontSize: 13,
               color: "white",

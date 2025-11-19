@@ -254,6 +254,19 @@ export default function Questions() {
       else if (questionType === "number") {
         const num = Number(numberCorrect);
         const tol = Number(tolerance);
+
+        if (!Number.isFinite(num)) {
+          alert("Zadej platné číslo jako správnou odpověď.");
+          setSaving(false);
+          return;
+        }
+
+        if (!Number.isFinite(tol) || tol < 0) {
+          alert("Tolerance musí být nezáporné číslo.");
+          setSaving(false);
+          return;
+        }
+
         payload = {
           ...base,
           options: [],
