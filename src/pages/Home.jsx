@@ -1,11 +1,17 @@
 // pages/Home.jsx
 import { Link } from "react-router-dom";
 import NeonLayout from "../components/NeonLayout";
+import reboosLogo from "../assets/reboos-logo.svg";
 
 export default function Home() {
   return (
     <NeonLayout>
       <div className="neon-card" style={{ textAlign: "center" }}>
+        <img
+          src={reboosLogo}
+          alt="REBOOS logo"
+          className="home-logo"
+        />
         <h1
           style={{
             fontSize: 34,

@@ -72,6 +72,13 @@ body {
   box-shadow: 0 0 40px rgba(15, 23, 42, 0.9);
 }
 
+.home-logo {
+  width: clamp(220px, 60vw, 420px);
+  display: block;
+  margin: 0 auto 24px;
+  filter: drop-shadow(0 0 20px rgba(236, 72, 153, 0.45));
+}
+
 /* ✨ Neon button */
 .neon-btn {
   background: linear-gradient(45deg, #a855f7, #ec4899, #00e5a8);
@@ -722,6 +729,18 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+  flex-wrap: wrap;
+}
+
+.projector-brand {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.projector-logo {
+  width: clamp(160px, 22vw, 320px);
+  filter: drop-shadow(0 0 26px rgba(56, 189, 248, 0.45));
 }
 
 .projector-header h1 {
@@ -779,6 +798,31 @@ body {
   border-radius: 32px;
   padding: clamp(32px, 5vw, 64px);
   box-shadow: 0 20px 70px rgba(2, 6, 23, 0.65);
+}
+
+.projector-hint {
+  font-size: clamp(20px, 2.2vw, 28px);
+  color: rgba(248, 250, 252, 0.9);
+  margin-bottom: 24px;
+}
+
+.projector-hint.muted {
+  color: rgba(148, 163, 184, 0.95);
+  font-size: clamp(16px, 1.8vw, 22px);
+  margin-top: 6px;
+}
+
+.projector-hint.speed {
+  color: #fde047;
+  font-weight: 600;
+}
+
+.projector-number {
+  background: rgba(56, 189, 248, 0.12);
+  border-left: 4px solid #38bdf8;
+  padding: 18px 22px;
+  border-radius: 18px;
+  margin-bottom: 28px;
 }
 
 .projector-meta {
@@ -841,6 +885,42 @@ body {
 .projector-option span {
   font-weight: 700;
   color: #facc15;
+}
+
+.projector-option.multi span {
+  color: #4ade80;
+}
+
+.projector-arrange-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.projector-arrange-item {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 18px 22px;
+  border-radius: 18px;
+  background: rgba(248, 250, 252, 0.08);
+  font-size: clamp(20px, 2.3vw, 30px);
+}
+
+.projector-arrange-index {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: rgba(251, 191, 36, 0.2);
+  color: #fbbf24;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 22px;
 }
 
 .projector-footer {

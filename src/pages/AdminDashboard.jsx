@@ -154,6 +154,12 @@ export default function AdminDashboard() {
     return map;
   }, [questions]);
 
+  const playerById = useMemo(() => {
+    const map = new Map();
+    players.forEach((player) => map.set(player.id, player));
+    return map;
+  }, [players]);
+
   const activeQuestion = useMemo(() => {
     if (!room?.currentQuestionId) return null;
     return questionMap.get(room.currentQuestionId) || null;
@@ -306,6 +312,18 @@ export default function AdminDashboard() {
   // =============================================================
   // HELPERS
   // =============================================================
+  const getQuestionPointValue = (question) => {
+    const fromQuestion = Number(question?.points);
+    if (Number.isFinite(fromQuestion) && fromQuestion > 0) {
+      return fromQuestion;
+    }
+    const fromSettings = Number(room?.settings?.pointsPerQuestion);
+    if (Number.isFinite(fromSettings) && fromSettings > 0) {
+      return fromSettings;
+    }
+    return 1;
+  };
+
   const startQuestion = async (id) => {
     if (loading) return;
     await updateDoc(doc(db, "quizRooms", roomCode), {
@@ -374,6 +392,7 @@ export default function AdminDashboard() {
     }
 
     const question = qSnap.data();
+    const normalizedPoints = Math.max(1, getQuestionPointValue(question));
 
     const ansSnap = await getDocs(
       collection(db, "quizRooms", roomCode, "answers")
@@ -393,14 +412,16 @@ export default function AdminDashboard() {
       const scoring = evaluateSpeedScoring(sorted, room.settings || {});
 
       for (const pid in scoring) {
-        const pts = scoring[pid];
+        const scaledPoints = Number(scoring[pid]);
+        if (!Number.isFinite(scaledPoints) || scaledPoints <= 0) continue;
+        const pts = scaledPoints * normalizedPoints;
 
         await updateDoc(doc(db, "quizRooms", roomCode, "players", pid), {
           score: increment(pts),
         });
 
         if (teamMode) {
-          const player = players.find((p) => p.id === pid);
+          const player = playerById.get(pid);
           if (player?.teamId) {
             teamScoreDelta[player.teamId] =
               (teamScoreDelta[player.teamId] || 0) + pts;
@@ -414,14 +435,14 @@ export default function AdminDashboard() {
         if (isCorrect) {
           await updateDoc(
             doc(db, "quizRooms", roomCode, "players", ans.playerId),
-            { score: increment(1) }
+            { score: increment(normalizedPoints) }
           );
 
           if (teamMode) {
-            const player = players.find((p) => p.id === ans.playerId);
+            const player = playerById.get(ans.playerId);
             if (player?.teamId) {
               teamScoreDelta[player.teamId] =
-                (teamScoreDelta[player.teamId] || 0) + 1;
+                (teamScoreDelta[player.teamId] || 0) + normalizedPoints;
             }
           }
         }
