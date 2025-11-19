@@ -1,71 +1,73 @@
 // utils/teamUtils.js
+import { db } from "../firebaseConfig";
+import {
+  collection,
+  getDocs,
+  updateDoc,
+  doc,
+} from "firebase/firestore";
 
-// jednoduchý shuffle
-export function shuffleArray(arr) {
-  const copy = [...arr];
-  for (let i = copy.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [copy[i], copy[j]] = [copy[j], copy[i]];
-  }
-  return copy;
+/**
+ * Náhodné rozdělení hráčů do týmů A/B
+ */
+export function splitIntoTeams(players) {
+  const shuffled = [...players].sort(() => Math.random() - 0.5);
+  const half = Math.ceil(shuffled.length / 2);
+
+  return {
+    teamA: shuffled.slice(0, half),
+    teamB: shuffled.slice(half),
+  };
 }
 
 /**
- * Vytvoří náhodné týmy z hráčů
- * @param {Array} players - [{id, name, color, ...}]
- * @param {number} teamSize - preferovaná velikost týmu (např. 4)
- * @returns {{teams: Array, playerTeamMap: Object}}
+ * AUTO-BALANCE TÝMŮ
+ * — upraví počty hráčů tak, aby A/B měly rozdíl max 1
  */
-export function createRandomTeams(players, teamSize = 4) {
-  if (!players || players.length === 0) {
-    return { teams: [], playerTeamMap: {} };
+export async function autoBalanceTeams(roomCode) {
+  const snap = await getDocs(
+    collection(db, "quizRooms", roomCode, "players")
+  );
+
+  const players = [];
+  snap.forEach((d) => players.push({ id: d.id, ...d.data() }));
+
+  let teamA = players.filter((p) => p.team === "A");
+  let teamB = players.filter((p) => p.team === "B");
+  let none  = players.filter((p) => !p.team);
+
+  // 1) přiřadit hráče bez týmu
+  for (const p of none) {
+    const assign = teamA.length <= teamB.length ? "A" : "B";
+    await updateDoc(
+      doc(db, "quizRooms", roomCode, "players", p.id),
+      { team: assign }
+    );
+    if (assign === "A") teamA.push(p);
+    else teamB.push(p);
   }
 
-  const shuffled = shuffleArray(players);
-  const totalPlayers = shuffled.length;
-
-  // spočítáme počet týmů – aby měly cca teamSize hráčů
-  const teamCount = Math.max(2, Math.round(totalPlayers / teamSize));
-  const baseTeamSize = Math.floor(totalPlayers / teamCount);
-  let remainder = totalPlayers % teamCount;
-
-  const colors = [
-    "#f97316",
-    "#22c55e",
-    "#3b82f6",
-    "#e11d48",
-    "#eab308",
-    "#a855f7",
-  ];
-
-  const teams = [];
-  const playerTeamMap = {};
-
-  let index = 0;
-
-  for (let t = 0; t < teamCount; t++) {
-    const size = baseTeamSize + (remainder > 0 ? 1 : 0);
-    if (remainder > 0) remainder--;
-
-    const slice = shuffled.slice(index, index + size);
-    index += size;
-
-    const teamId = `team_${t + 1}`;
-    const team = {
-      id: teamId,
-      name: `Tým ${t + 1}`,
-      color: colors[t % colors.length],
-      players: slice.map((p) => p.id),
-      score: 0,
-      createdAt: Date.now(),
-    };
-
-    slice.forEach((p) => {
-      playerTeamMap[p.id] = teamId;
-    });
-
-    teams.push(team);
+  // 2) dorovnat rozdíl
+  while (Math.abs(teamA.length - teamB.length) > 1) {
+    if (teamA.length > teamB.length) {
+      // A má víc → přesun do B
+      const moved = teamA.pop();
+      await updateDoc(
+        doc(db, "quizRooms", roomCode, "players", moved.id),
+        { team: "B" }
+      );
+      teamB.push(moved);
+    } else {
+      // B má víc → přesun do A
+      const moved = teamB.pop();
+      await updateDoc(
+        doc(db, "quizRooms", roomCode, "players", moved.id),
+        { team: "A" }
+      );
+      teamA.push(moved);
+    }
   }
 
-  return { teams, playerTeamMap };
+  return { teamA, teamB };
 }
+
