@@ -492,14 +492,33 @@ export default function AdminDashboard() {
 
   const toggleTeamMode = async () => {
     const newVal = !room?.teamMode;
+    setLoading(true);
 
-    await updateDoc(doc(db, "quizRooms", roomCode), {
-      teamMode: newVal,
-      teamSettings: {
-        ...(room?.teamSettings || {}),
-        teamSize: teamSize,
-      },
-    });
+    try {
+      if (!newVal) {
+        const tRef = collection(db, "quizRooms", roomCode, "teams");
+        const tSnap = await getDocs(tRef);
+        await Promise.all(tSnap.docs.map((d) => deleteDoc(d.ref)));
+
+        await Promise.all(
+          players.map((p) =>
+            updateDoc(doc(db, "quizRooms", roomCode, "players", p.id), {
+              teamId: null,
+            })
+          )
+        );
+      }
+
+      await updateDoc(doc(db, "quizRooms", roomCode), {
+        teamMode: newVal,
+        teamSettings: {
+          ...(room?.teamSettings || {}),
+          teamSize: Number(teamSize) || 4,
+        },
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const toggleLobbyLock = async () => {

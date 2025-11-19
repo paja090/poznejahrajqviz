@@ -51,26 +51,25 @@ export default function SelectQuestions() {
 
   const normalized = (q) => {
     const now = Date.now();
+    const safeDifficulty = ["easy", "medium", "hard"].includes(q.difficulty)
+      ? q.difficulty
+      : "medium";
 
     return {
       id: q.id,
       title: q.title,
       type: q.type,
-      options: q.options || null,
+      options: Array.isArray(q.options) ? q.options : [],
       correctAnswer: q.correctAnswer ?? null,
       imageUrl: q.imageUrl ?? null,
-
-      // Pro IMAGE typ – jestli máš v bankách imageMode
       imageMode: q.imageMode || null,
-
-      // Pro NUMBER typ – pokud existuje
-      tolerance: q.tolerance || null,
+      tolerance:
+        typeof q.tolerance === "number" ? q.tolerance : null,
       toleranceType: q.toleranceType || null,
-
       order: now,
       createdAt: now,
-      category: q.category || "other",
-      difficulty: q.difficulty || "normal",
+      category: q.category || "general",
+      difficulty: safeDifficulty,
     };
   };
 

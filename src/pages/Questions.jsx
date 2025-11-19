@@ -33,6 +33,12 @@ const TYPE_ICONS = {
   arrange: "🔁",
 };
 
+const DIFFICULTY_OPTIONS = [
+  { value: "easy", label: "Lehká" },
+  { value: "medium", label: "Střední" },
+  { value: "hard", label: "Těžká" },
+];
+
 export default function Questions() {
   const { roomCode } = useParams();
 
@@ -40,6 +46,8 @@ export default function Questions() {
   const [imageMode, setImageMode] = useState("abc");
 
   const [title, setTitle] = useState("");
+  const [category, setCategory] = useState("general");
+  const [difficulty, setDifficulty] = useState("medium");
 
   // Shared option fields
   const [opt1, setOpt1] = useState("");
@@ -91,6 +99,8 @@ export default function Questions() {
 
   const resetForm = () => {
     setTitle("");
+    setCategory("general");
+    setDifficulty("medium");
     setOpt1("");
     setOpt2("");
     setOpt3("");
@@ -147,6 +157,12 @@ export default function Questions() {
         }
       }
 
+      const normalizedCategory = category.trim() || "general";
+      const allowedDifficulty = DIFFICULTY_OPTIONS.map((o) => o.value);
+      const normalizedDifficulty = allowedDifficulty.includes(difficulty)
+        ? difficulty
+        : "medium";
+
       const base = {
         id,
         title: title.trim(),
@@ -154,8 +170,13 @@ export default function Questions() {
         options: null,
         correctAnswer: null,
         imageUrl: imageUrl || null,
+        imageMode: null,
+        tolerance: null,
+        toleranceType: null,
         order: now,
         createdAt: now,
+        category: normalizedCategory,
+        difficulty: normalizedDifficulty,
       };
 
       let payload = { ...base };
@@ -254,6 +275,19 @@ export default function Questions() {
       else if (questionType === "number") {
         const num = Number(numberCorrect);
         const tol = Number(tolerance);
+
+        if (!Number.isFinite(num)) {
+          alert("Zadej platné číslo jako správnou odpověď.");
+          setSaving(false);
+          return;
+        }
+
+        if (!Number.isFinite(tol) || tol < 0) {
+          alert("Tolerance musí být nezáporné číslo.");
+          setSaving(false);
+          return;
+        }
+
         payload = {
           ...base,
           options: [],
@@ -557,6 +591,33 @@ export default function Questions() {
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Např. Kdy vznikla Česká republika?"
           />
+        </div>
+
+        <div className="form-section" style={{ display: "flex", gap: 12 }}>
+          <div style={{ flex: 1 }}>
+            <label className="form-label">Kategorie</label>
+            <input
+              className="form-input"
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              placeholder="např. historie, sport, ..."
+            />
+          </div>
+
+          <div style={{ flex: 1 }}>
+            <label className="form-label">Obtížnost</label>
+            <select
+              className="form-select"
+              value={difficulty}
+              onChange={(e) => setDifficulty(e.target.value)}
+            >
+              {DIFFICULTY_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {/* TYPE SPECIFIC */}
