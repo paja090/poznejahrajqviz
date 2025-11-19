@@ -1,14 +1,18 @@
 // components/BrandLogo.jsx
-// Centralized logo rendering so we keep proportions/responsiveness consistent
-import reboosLogo from "../assets/reboos-logo.svg";
+// Centralized logo rendering – now using /public/rebuss.png
 
 export default function BrandLogo({ size = 160, className = "" }) {
   return (
     <img
-      src={reboosLogo}
-      alt="REBOOS wordmark"
+      src="/rebuss.png"
+      alt="REBUSS logo"
       className={`brand-logo ${className}`}
-      style={{ maxWidth: size, maxHeight: size * 0.45 }}
+      style={{
+        maxWidth: size,
+        maxHeight: size * 0.45,
+        objectFit: "contain",
+      }}
     />
   );
 }
+
