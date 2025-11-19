@@ -87,6 +87,15 @@ export default function JoinRoom() {
         playersCount: increment(1),
       });
 
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem("playerId", playerDoc.id);
+          localStorage.setItem("playerRoom", trimmedRoom);
+        } catch (storageErr) {
+          console.warn("Nepodařilo se uložit playerId do localStorage", storageErr);
+        }
+      }
+
       navigate(`/lobby/${trimmedRoom}?player=${playerDoc.id}`);
     } catch (err) {
       console.error(err);

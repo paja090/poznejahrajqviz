@@ -116,6 +116,20 @@ export default function Game() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentQuestionId]);
 
+  // ARRANGE otázky potřebují výchozí pořadí
+  useEffect(() => {
+    if (!question || question.type !== "arrange") return;
+    setOpenAnswer((prev) => {
+      if (
+        Array.isArray(prev) &&
+        prev.length === (question.options?.length || 0)
+      ) {
+        return prev;
+      }
+      return (question.options || []).map((_, idx) => idx);
+    });
+  }, [question]);
+
   // Submit answer
   const sendAnswer = async (value) => {
     if (answered || !currentQuestionId || localCountdown > 0) return;
@@ -569,12 +583,76 @@ function AnswerUI({
     );
   }
 
-  // ARRANGE – TODO: můžeš doplnit drag & drop UI
+  // ARRANGE
   if (question.type === "arrange") {
+    const expectedLength = question.options?.length || 0;
+    const order =
+      Array.isArray(openAnswer) && openAnswer.length === expectedLength
+        ? openAnswer
+        : Array.from({ length: expectedLength }, (_, idx) => idx);
+
+    const moveItem = (index, direction) => {
+      setOpenAnswer((prev) => {
+        const prevArr =
+          Array.isArray(prev) && prev.length === expectedLength
+            ? [...prev]
+            : [...order];
+        const target = index + direction;
+        if (target < 0 || target >= prevArr.length) return prevArr;
+        const updated = [...prevArr];
+        [updated[index], updated[target]] = [updated[target], updated[index]];
+        return updated;
+      });
+    };
+
     return (
-      <p style={styles.sub}>
-        Typ „Seřazení“ zatím nemá UI – můžeš doplnit drag & drop logiku.
-      </p>
+      <>
+        <p style={{ fontSize: 13, opacity: 0.75, marginBottom: 8 }}>
+          Přesuň položky do správného pořadí pomocí šipek.
+        </p>
+        <ul style={styles.arrangeList}>
+          {order.map((optionIndex, position) => (
+            <li key={`${optionIndex}-${position}`} style={styles.arrangeItem}>
+              <span style={styles.arrangeIndex}>{position + 1}.</span>
+              <span style={{ flex: 1 }}>
+                {question.options?.[optionIndex]}
+              </span>
+              <div style={styles.arrangeButtons}>
+                <button
+                  type="button"
+                  style={{
+                    ...styles.arrangeButton,
+                    opacity: disabled || position === 0 ? 0.5 : 1,
+                  }}
+                  onClick={() => moveItem(position, -1)}
+                  disabled={disabled || position === 0}
+                >
+                  ↑
+                </button>
+                <button
+                  type="button"
+                  style={{
+                    ...styles.arrangeButton,
+                    opacity:
+                      disabled || position === order.length - 1 ? 0.5 : 1,
+                  }}
+                  onClick={() => moveItem(position, 1)}
+                  disabled={disabled || position === order.length - 1}
+                >
+                  ↓
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+        <button
+          style={{ ...styles.answerBtn, borderColor }}
+          disabled={disabled || order.length === 0}
+          onClick={() => sendAnswer([...order])}
+        >
+          ✔ Odeslat pořadí
+        </button>
+      </>
     );
   }
 
@@ -805,6 +883,43 @@ const styles = {
     alignItems: "center",
     gap: 6,
     color: "white",
+  },
+  arrangeList: {
+    listStyle: "none",
+    padding: 0,
+    margin: "0 0 12px",
+    display: "flex",
+    flexDirection: "column",
+    gap: 8,
+  },
+  arrangeItem: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    padding: "8px 10px",
+    borderRadius: 12,
+    border: "1px solid rgba(148,163,184,0.4)",
+    background: "rgba(15,23,42,0.85)",
+  },
+  arrangeIndex: {
+    width: 26,
+    textAlign: "center",
+    fontWeight: 600,
+    opacity: 0.8,
+  },
+  arrangeButtons: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 4,
+  },
+  arrangeButton: {
+    width: 32,
+    height: 28,
+    borderRadius: 8,
+    border: "1px solid rgba(148,163,184,0.6)",
+    background: "rgba(2,6,23,0.6)",
+    color: "white",
+    cursor: "pointer",
   },
   header: {
     marginBottom: 14,
