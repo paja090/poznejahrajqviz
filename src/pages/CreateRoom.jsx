@@ -1,7 +1,15 @@
 // pages/CreateRoom.jsx
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { db } from "../firebaseConfig";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import {
+  doc,
+  setDoc,
+  serverTimestamp,
+  collection,
+  onSnapshot,
+  orderBy,
+  query,
+} from "firebase/firestore";
 import { Link } from "react-router-dom";
 import NeonLayout from "../components/NeonLayout";
 
@@ -12,11 +20,22 @@ export default function CreateRoom() {
   const [speedScoring, setSpeedScoring] = useState("first");
   const [autoScoreboard, setAutoScoreboard] = useState(true);
   const [showAnswersLive, setShowAnswersLive] = useState(false);
+  const [events, setEvents] = useState([]);
+  const [selectedEvent, setSelectedEvent] = useState("");
+
+  useEffect(() => {
+    const q = query(collection(db, "events"), orderBy("date", "asc"));
+    return onSnapshot(q, (snap) => {
+      setEvents(snap.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+    });
+  }, []);
 
   const createRoom = async () => {
     const id = Math.floor(100000 + Math.random() * 900000).toString();
 
     await setDoc(doc(db, "quizRooms", id), {
+      eventId: selectedEvent || null,
+      prepared: false,
       createdAt: serverTimestamp(),
       status: "waiting",
       currentQuestionId: null,
@@ -132,6 +151,34 @@ export default function CreateRoom() {
                   moderátora)
                 </span>
               </label>
+            </div>
+
+            <div style={{ fontSize: 13, marginBottom: 16 }}>
+              <label style={{ display: "block", marginBottom: 4 }}>
+                Přiřadit k události (volitelné)
+              </label>
+              <select
+                value={selectedEvent}
+                onChange={(e) => setSelectedEvent(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: 10,
+                  borderRadius: 12,
+                  border: "1px solid rgba(148,163,184,0.6)",
+                  background: "rgba(15,23,42,0.9)",
+                  color: "white",
+                }}
+              >
+                <option value="">Bez události</option>
+                {events.map((event) => (
+                  <option key={event.id} value={event.id}>
+                    {event.name} ({event.date})
+                  </option>
+                ))}
+              </select>
+              <p className="subtext" style={{ marginTop: 4 }}>
+                Potřebuješ event? <Link to="/events">Otevři Event Control</Link>
+              </p>
             </div>
 
             <button

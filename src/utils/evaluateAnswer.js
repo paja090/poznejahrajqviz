@@ -62,21 +62,41 @@ export function evaluateAnswer(question, answer) {
     const a = Number(answer);
     const c = Number(correctAnswer);
 
-    if (Number.isNaN(a) || Number.isNaN(c)) return false;
+    if (!Number.isFinite(a) || !Number.isFinite(c)) return false;
+
+    const tolValue = typeof tolerance === "number" ? tolerance : 0;
 
     if (toleranceType === "percent") {
-      const limit = (c * tolerance) / 100;
+      const base = Math.abs(c);
+      const limit = (base * tolValue) / 100;
       return Math.abs(a - c) <= limit;
     }
 
-    // absolute
-    return Math.abs(a - c) <= tolerance;
+    // absolute tolerance (fallback 0 => exact match)
+    return Math.abs(a - c) <= tolValue;
   }
 
   // --- ARRANGE ---
   if (type === "arrange") {
     if (!Array.isArray(answer) || !Array.isArray(correctAnswer)) return false;
-    return JSON.stringify(answer) === JSON.stringify(correctAnswer);
+    if (answer.length !== correctAnswer.length) return false;
+
+    const normalize = (arr) =>
+      arr.map((value) => {
+        if (typeof value === "number") return value;
+        if (typeof value === "string") {
+          const trimmed = value.trim();
+          const numeric = Number(trimmed);
+          if (!Number.isNaN(numeric)) return numeric;
+          return trimmed.toLowerCase();
+        }
+        return value;
+      });
+
+    const normalizedAnswer = normalize(answer);
+    const normalizedCorrect = normalize(correctAnswer);
+
+    return JSON.stringify(normalizedAnswer) === JSON.stringify(normalizedCorrect);
   }
 
   // fallback

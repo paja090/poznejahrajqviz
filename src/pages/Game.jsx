@@ -438,6 +438,18 @@ function AnswerUI({
 
   const borderColor = accentColor || "rgba(148,163,184,0.6)";
 
+  const [arrangeState, setArrangeState] = useState({
+    questionId: null,
+    order: [],
+  });
+
+  useEffect(() => {
+    if (question.type !== "arrange" || !Array.isArray(question.options)) return;
+    const indexes = question.options.map((_, idx) => idx);
+    const shuffled = shuffle(indexes);
+    setArrangeState({ questionId: question.id, order: shuffled });
+  }, [question.id, question.type, question.options]);
+
   // ABC or IMAGE-ABC
   if (
     (question.type === "abc" && question.options) ||
@@ -569,16 +581,72 @@ function AnswerUI({
     );
   }
 
-  // ARRANGE – TODO: můžeš doplnit drag & drop UI
+  // ARRANGE
   if (question.type === "arrange") {
+    const moveItem = (index, direction) => {
+      setArrangeState((prev) => {
+        if (prev.order.length === 0) return prev;
+        const next = [...prev.order];
+        const target = index + direction;
+        if (target < 0 || target >= next.length) return prev;
+        const [item] = next.splice(index, 1);
+        next.splice(target, 0, item);
+        return { ...prev, order: next };
+      });
+    };
+
     return (
-      <p style={styles.sub}>
-        Typ „Seřazení“ zatím nemá UI – můžeš doplnit drag & drop logiku.
-      </p>
+      <>
+        <p style={styles.sub}>Přetáhni pořadí položek do správné posloupnosti.</p>
+        <div style={styles.arrangeList}>
+          {arrangeState.order.map((originalIndex, idx) => (
+            <div key={originalIndex} style={styles.arrangeItem}>
+              <span style={styles.arrangeIndex}>{idx + 1}.</span>
+              <span style={styles.arrangeText}>
+                {question.options?.[originalIndex]}
+              </span>
+              <div style={styles.arrangeControls}>
+                <button
+                  type="button"
+                  onClick={() => moveItem(idx, -1)}
+                  disabled={idx === 0 || disabled}
+                  style={styles.arrangeButton}
+                >
+                  ↑
+                </button>
+                <button
+                  type="button"
+                  onClick={() => moveItem(idx, 1)}
+                  disabled={idx === arrangeState.order.length - 1 || disabled}
+                  style={styles.arrangeButton}
+                >
+                  ↓
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+        <button
+          style={{ ...styles.answerBtn, borderColor }}
+          disabled={disabled || arrangeState.order.length === 0}
+          onClick={() => sendAnswer(arrangeState.order)}
+        >
+          ✔ Odeslat pořadí
+        </button>
+      </>
     );
   }
 
   return null;
+}
+
+function shuffle(arr) {
+  const copy = [...arr];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
 }
 
 function ResultUI({ result, teamColor, confetti, question }) {
@@ -805,6 +873,41 @@ const styles = {
     alignItems: "center",
     gap: 6,
     color: "white",
+  },
+  arrangeList: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 8,
+    marginBottom: 12,
+  },
+  arrangeItem: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    padding: "8px 10px",
+    borderRadius: 12,
+    border: "1px solid rgba(148,163,184,0.4)",
+    background: "rgba(15,23,42,0.85)",
+  },
+  arrangeIndex: {
+    fontWeight: 600,
+    width: 22,
+  },
+  arrangeText: {
+    flex: 1,
+    fontSize: 14,
+  },
+  arrangeControls: {
+    display: "flex",
+    gap: 6,
+  },
+  arrangeButton: {
+    borderRadius: 8,
+    border: "1px solid rgba(148,163,184,0.5)",
+    padding: "4px 8px",
+    background: "rgba(15,23,42,0.95)",
+    color: "white",
+    cursor: "pointer",
   },
   header: {
     marginBottom: 14,

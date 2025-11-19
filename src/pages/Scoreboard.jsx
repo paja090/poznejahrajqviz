@@ -1,12 +1,7 @@
 // pages/Scoreboard.jsx
 import { useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import {
-  collection,
-  doc,
-  onSnapshot,
-  getDocs,
-} from "firebase/firestore";
+import { collection, doc, onSnapshot } from "firebase/firestore";
 
 import { db } from "../firebaseConfig";
 import NeonLayout from "../components/NeonLayout";
@@ -14,12 +9,26 @@ import { evaluateAnswer } from "../utils/evaluateAnswer";
 
 export default function Scoreboard() {
   const { roomCode } = useParams();
+  const [room, setRoom] = useState(null);
   const [players, setPlayers] = useState([]);
+  const [teams, setTeams] = useState([]);
   const [questions, setQuestions] = useState([]);
   const [answers, setAnswers] = useState([]);
   const [expanded, setExpanded] = useState(null);
 
   const playerId = localStorage.getItem("playerId");
+
+  // ROOM
+  useEffect(() => {
+    const ref = doc(db, "quizRooms", roomCode);
+    return onSnapshot(ref, (snap) => {
+      if (snap.exists()) {
+        setRoom({ id: snap.id, ...snap.data() });
+      } else {
+        setRoom(null);
+      }
+    });
+  }, [roomCode]);
 
   // PLAYERS (realtime)
   useEffect(() => {
@@ -32,6 +41,17 @@ export default function Scoreboard() {
     });
   }, [roomCode]);
 
+  // TEAMS (realtime)
+  useEffect(() => {
+    const ref = collection(db, "quizRooms", roomCode, "teams");
+    return onSnapshot(ref, (snap) => {
+      const arr = snap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+      setTeams(arr);
+    });
+  }, [roomCode]);
+
   // QUESTIONS (realtime)
   useEffect(() => {
     const ref = collection(db, "quizRooms", roomCode, "questions");
@@ -40,14 +60,12 @@ export default function Scoreboard() {
     });
   }, [roomCode]);
 
-  // ANSWERS (snapshot – pro scoreboard stačí)
+  // ANSWERS (realtime pro živé statistiky)
   useEffect(() => {
-    const load = async () => {
-      const ref = collection(db, "quizRooms", roomCode, "answers");
-      const snap = await getDocs(ref);
+    const ref = collection(db, "quizRooms", roomCode, "answers");
+    return onSnapshot(ref, (snap) => {
       setAnswers(snap.docs.map((d) => d.data()));
-    };
-    load();
+    });
   }, [roomCode]);
 
   // mapy pro rychlý přístup
@@ -65,6 +83,12 @@ export default function Scoreboard() {
     });
     return map;
   }, [answers]);
+
+  const teamById = useMemo(() => {
+    const map = new Map();
+    teams.forEach((t) => map.set(t.id, t));
+    return map;
+  }, [teams]);
 
   // statistiky pro hráče (accuracy, speed index, atd.)
   const buildStatsForPlayer = (pid) => {
@@ -125,6 +149,61 @@ export default function Scoreboard() {
     };
   };
 
+  const playerStatsMap = useMemo(() => {
+    const map = new Map();
+    players.forEach((p) => {
+      map.set(p.id, buildStatsForPlayer(p.id));
+    });
+    return map;
+  }, [players, answers, questions, answersByQuestion]);
+
+  const teamStats = useMemo(() => {
+    if (!teams.length) return [];
+
+    return teams
+      .map((team) => {
+        const members = players.filter((p) => p.teamId === team.id);
+        const totals = members.reduce(
+          (acc, member) => {
+            const stats = playerStatsMap.get(member.id);
+            acc.correct += stats?.correctCount || 0;
+            acc.answered += stats?.answeredCount || 0;
+            acc.speedWins += stats?.speedWins || 0;
+            return acc;
+          },
+          { correct: 0, answered: 0, speedWins: 0 }
+        );
+
+        const accuracy =
+          totals.answered > 0
+            ? Math.round((totals.correct / totals.answered) * 100)
+            : 0;
+
+        const totalScore =
+          typeof team.score === "number"
+            ? team.score
+            : members.reduce((sum, member) => sum + (member.score || 0), 0);
+
+        return {
+          ...team,
+          members,
+          totalScore,
+          accuracy,
+          speedWins: totals.speedWins,
+        };
+      })
+      .sort((a, b) => (b.totalScore ?? 0) - (a.totalScore ?? 0));
+  }, [teams, players, playerStatsMap]);
+
+  const maxTeamScore = teamStats.length
+    ? Math.max(...teamStats.map((t) => t.totalScore || 0))
+    : 0;
+
+  const unassignedPlayers = useMemo(
+    () => players.filter((p) => !p.teamId),
+    [players]
+  );
+
   const toggleExpand = (pid) => {
     setExpanded((prev) => (prev === pid ? null : pid));
   };
@@ -136,7 +215,7 @@ export default function Scoreboard() {
 
         <div style={{ marginBottom: 14 }}>
           <Link
-            to={`/host/${roomCode}`}
+            to={`/host/${roomCode}/dashboard`}
             style={{
               fontSize: 13,
               color: "white",
@@ -147,6 +226,54 @@ export default function Scoreboard() {
             ← Zpět do moderátoru
           </Link>
         </div>
+
+        <div style={styles.metaRow}>
+          <span>Stav: {statusToLabel(room?.status)}</span>
+          <span>Režim: {room?.teamMode ? "Týmový" : "Solo"}</span>
+          <span>Hráčů: {players.length}</span>
+        </div>
+
+        {room?.status === "finished" && (
+          <div style={{ marginTop: 12 }}>
+            <Link
+              to={
+                room?.eventId
+                  ? `/events/${room.eventId}/results/${roomCode}`
+                  : `/results/${roomCode}`
+              }
+              className="neon-btn"
+              style={{ display: "inline-block" }}
+            >
+              🏆 Otevřít kompletní vyhodnocení
+            </Link>
+          </div>
+        )}
+
+        {room?.teamMode && (
+          <section style={{ marginTop: 16 }}>
+            <h2 className="section-title">🏆 Týmové pořadí</h2>
+            {teamStats.length === 0 && (
+              <p style={{ fontSize: 13, opacity: 0.75 }}>
+                Zatím nejsou vytvořené žádné týmy.
+              </p>
+            )}
+            <div style={styles.teamGrid}>
+              {teamStats.map((team, index) => (
+                <TeamCard
+                  key={team.id}
+                  team={team}
+                  rank={index + 1}
+                  maxScore={maxTeamScore}
+                />
+              ))}
+            </div>
+            {unassignedPlayers.length > 0 && (
+              <p style={styles.note}>
+                {unassignedPlayers.length} hráčů zatím nemá přiřazený tým.
+              </p>
+            )}
+          </section>
+        )}
 
         {players.length === 0 && (
           <p style={{ fontSize: 13, opacity: 0.75 }}>
@@ -168,7 +295,15 @@ export default function Scoreboard() {
                 ? "🥉"
                 : `${rank}.`;
 
-            const stats = buildStatsForPlayer(p.id);
+            const stats = playerStatsMap.get(p.id) || {
+              accuracy: 0,
+              answeredCount: 0,
+              totalQuestions: questions.length,
+              speedWins: 0,
+              avgSpeedRank: null,
+            };
+
+            const team = p.teamId ? teamById.get(p.teamId) : null;
 
             return (
               <div
@@ -199,6 +334,17 @@ export default function Scoreboard() {
                       {medal}
                     </span>
                     <span>{p.name}</span>
+                    {team && (
+                      <span
+                        style={{
+                          ...styles.teamBadge,
+                          backgroundColor: `${team.color || "#22c55e"}22`,
+                          borderColor: team.color || "#22c55e",
+                        }}
+                      >
+                        {team.name}
+                      </span>
+                    )}
                   </div>
 
                   <div style={styles.playerRight}>
@@ -359,6 +505,67 @@ function typeToLabel(type) {
   }
 }
 
+function statusToLabel(status) {
+  switch (status) {
+    case "running":
+      return "Hra běží";
+    case "paused":
+      return "Pozastaveno";
+    case "finished":
+      return "Dokončeno";
+    case "prepared":
+      return "Připraveno";
+    default:
+      return "Čeká se";
+  }
+}
+
+function TeamCard({ team, rank, maxScore }) {
+  const percent = maxScore > 0 ? Math.round(((team.totalScore || 0) / maxScore) * 100) : 0;
+  const badge = rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : `${rank}.`;
+
+  return (
+    <div style={styles.teamCard}>
+      <div style={styles.teamHeader}>
+        <span style={{ width: 28 }}>{badge}</span>
+        <div style={styles.teamName}>
+          <span
+            style={{
+              ...styles.teamDot,
+              background: team.color || "#22c55e",
+            }}
+          />
+          <span>{team.name}</span>
+        </div>
+        <span style={{ fontWeight: 600 }}>{team.totalScore ?? 0} b.</span>
+      </div>
+      <div style={styles.teamProgressOuter}>
+        <div
+          style={{
+            ...styles.teamProgressInner,
+            width: `${percent}%`,
+            background: team.color || "#22c55e",
+          }}
+        />
+      </div>
+      <div style={styles.teamStatsRow}>
+        <StatChip label="Accuracy" value={`${team.accuracy}%`} />
+        <StatChip label="Speed wins" value={team.speedWins} />
+        <StatChip label="Členové" value={team.members.length} />
+      </div>
+      {team.members.length > 0 && (
+        <div style={styles.teamMembersRow}>
+          {team.members.map((member) => (
+            <span key={member.id} style={styles.memberPill}>
+              {member.name}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // -------------------------------------------------
 // STYLES
 // -------------------------------------------------
@@ -401,6 +608,14 @@ const styles = {
     opacity: 0.7,
     fontSize: 11,
   },
+  metaRow: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: 12,
+    fontSize: 12,
+    opacity: 0.85,
+    marginBottom: 10,
+  },
   miniStatsRow: {
     display: "flex",
     flexWrap: "wrap",
@@ -436,6 +651,79 @@ const styles = {
   detailRight: {
     display: "flex",
     alignItems: "center",
+  },
+  teamBadge: {
+    fontSize: 11,
+    borderRadius: 999,
+    padding: "2px 8px",
+    border: "1px solid transparent",
+    fontWeight: 500,
+  },
+  teamGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+    gap: 12,
+    marginTop: 10,
+  },
+  teamCard: {
+    borderRadius: 14,
+    padding: "12px 14px",
+    border: "1px solid rgba(148,163,184,0.35)",
+    background: "rgba(15,23,42,0.92)",
+  },
+  teamHeader: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    fontSize: 14,
+    marginBottom: 8,
+  },
+  teamName: {
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    fontWeight: 600,
+  },
+  teamDot: {
+    width: 10,
+    height: 10,
+    borderRadius: "999px",
+  },
+  teamProgressOuter: {
+    width: "100%",
+    height: 8,
+    borderRadius: 999,
+    background: "rgba(15,23,42,0.8)",
+    border: "1px solid rgba(148,163,184,0.3)",
+    overflow: "hidden",
+    marginBottom: 10,
+  },
+  teamProgressInner: {
+    height: "100%",
+    borderRadius: 999,
+    transition: "width 0.4s ease",
+  },
+  teamStatsRow: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  teamMembersRow: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: 6,
+    marginTop: 10,
+  },
+  memberPill: {
+    fontSize: 11,
+    borderRadius: 999,
+    padding: "2px 8px",
+    background: "rgba(255,255,255,0.06)",
+  },
+  note: {
+    fontSize: 12,
+    opacity: 0.7,
+    marginTop: 8,
   },
 };
 

@@ -1,11 +1,15 @@
 // pages/Home.jsx
 import { Link } from "react-router-dom";
 import NeonLayout from "../components/NeonLayout";
+import BrandLogo from "../components/BrandLogo";
 
 export default function Home() {
   return (
     <NeonLayout>
       <div className="neon-card" style={{ textAlign: "center" }}>
+        <div style={{ display: "flex", justifyContent: "center" }}>
+          <BrandLogo size={220} />
+        </div>
         <h1
           style={{
             fontSize: 34,

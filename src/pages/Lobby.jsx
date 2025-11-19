@@ -50,6 +50,7 @@ export default function Lobby() {
   };
 
   const statusText = {
+    prepared: "Moderátor teprve připravuje kvíz.",
     waiting: "Čekáme na start hry…",
     running: "Hra už běží – můžeš přejít do hry!",
     paused: "Hra je dočasně pozastavena.",

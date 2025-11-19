@@ -9,6 +9,12 @@ import Scoreboard from "./pages/Scoreboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import ImportQuestions from "./pages/ImportQuestions";
 import SelectQuestions from "./pages/SelectQuestions";
+import QuestionProjector from "./pages/QuestionProjector";
+import Events from "./pages/Events";
+import CreateEvent from "./pages/CreateEvent";
+import EventDetail from "./pages/EventDetail";
+import EventCreateQuiz from "./pages/EventCreateQuiz";
+import QuizResults from "./pages/QuizResults";
 
 
 
@@ -29,8 +35,15 @@ export default function App() {
         <Route path="/lobby/:roomCode" element={<Lobby />} />
         <Route path="/game/:roomCode/:playerId" element={<Game />} />
         <Route path="/scoreboard/:roomCode" element={<Scoreboard />} />
+        <Route path="/projector/:roomCode" element={<QuestionProjector />} />
         <Route path="/import" element={<ImportQuestions />} />
         <Route path="/host/:roomCode/select-questions" element={<SelectQuestions />} />
+        <Route path="/events" element={<Events />} />
+        <Route path="/events/create" element={<CreateEvent />} />
+        <Route path="/events/:eventId" element={<EventDetail />} />
+        <Route path="/events/:eventId/create-quiz" element={<EventCreateQuiz />} />
+        <Route path="/events/:eventId/results/:roomCode" element={<QuizResults />} />
+        <Route path="/results/:roomCode" element={<QuizResults />} />
       </Routes>
     </BrowserRouter>
   );
