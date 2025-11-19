@@ -60,6 +60,11 @@ export default function JoinRoom() {
       }
 
       const roomData = roomSnap.data();
+      if (roomData.prepared) {
+        alert("Tento kvíz je zatím jen připravený. Moderátor ho ještě neodemkl pro hráče.");
+        setLoading(false);
+        return;
+      }
       if (roomData.status === "finished") {
         alert("Tato hra už byla ukončena.");
         setLoading(false);

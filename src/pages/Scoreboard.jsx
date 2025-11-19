@@ -233,6 +233,22 @@ export default function Scoreboard() {
           <span>Hráčů: {players.length}</span>
         </div>
 
+        {room?.status === "finished" && (
+          <div style={{ marginTop: 12 }}>
+            <Link
+              to={
+                room?.eventId
+                  ? `/events/${room.eventId}/results/${roomCode}`
+                  : `/results/${roomCode}`
+              }
+              className="neon-btn"
+              style={{ display: "inline-block" }}
+            >
+              🏆 Otevřít kompletní vyhodnocení
+            </Link>
+          </div>
+        )}
+
         {room?.teamMode && (
           <section style={{ marginTop: 16 }}>
             <h2 className="section-title">🏆 Týmové pořadí</h2>
@@ -497,6 +513,8 @@ function statusToLabel(status) {
       return "Pozastaveno";
     case "finished":
       return "Dokončeno";
+    case "prepared":
+      return "Připraveno";
     default:
       return "Čeká se";
   }

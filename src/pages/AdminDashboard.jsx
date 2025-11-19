@@ -26,6 +26,7 @@ import {
   evaluateSpeedScoring,
 } from "../utils/evaluateAnswer";
 import { createRandomTeams } from "../utils/teamUtils";
+import BrandLogo from "../components/BrandLogo";
 
 const TYPE_ICONS = {
   abc: "🅰",
@@ -57,6 +58,7 @@ const STATUS_COLORS = {
   running: "#22c55e",
   paused: "#facc15",
   waiting: "#64748b",
+  prepared: "#818cf8",
   idle: "#94a3b8",
 };
 
@@ -82,6 +84,7 @@ export default function AdminDashboard() {
   const [editDraft, setEditDraft] = useState({});
   const [autoPlayDelay, setAutoPlayDelay] = useState(4000);
   const [pauseDuration, setPauseDuration] = useState(3000);
+  const [eventInfo, setEventInfo] = useState(null);
 
   // -------------------------------
   // LOAD ROOM
@@ -104,6 +107,22 @@ export default function AdminDashboard() {
       }
     });
   }, [roomCode]);
+
+  // load related event metadata
+  useEffect(() => {
+    if (!room?.eventId) {
+      setEventInfo(null);
+      return;
+    }
+    const ref = doc(db, "events", room.eventId);
+    return onSnapshot(ref, (snap) => {
+      if (snap.exists()) {
+        setEventInfo({ id: snap.id, ...snap.data() });
+      } else {
+        setEventInfo(null);
+      }
+    });
+  }, [room?.eventId]);
 
   // -------------------------------
   // LOAD QUESTIONS
@@ -493,6 +512,13 @@ export default function AdminDashboard() {
     window.open(url, "_blank", "noopener,noreferrer");
   };
 
+  const goResults = () => {
+    const target = room?.eventId
+      ? `/events/${room.eventId}/results/${roomCode}`
+      : `/results/${roomCode}`;
+    window.open(target, "_blank", "noopener,noreferrer");
+  };
+
   const handleDragEnd = async (result) => {
     if (!result.destination) return;
 
@@ -722,14 +748,26 @@ export default function AdminDashboard() {
     <NeonLayout maxWidth={1400}>
       <div className="admin-dashboard">
         <header className="admin-header">
-          <div>
-            <p className="eyebrow">Room • {roomCode}</p>
-            <h1>🎛 Moderátorský panel</h1>
-            <p className="subtext">
-              Stav: <span style={{ color: stateColor }}>{room?.status}</span> •
-              Hráčů: {players.length} • Týmový mód:{" "}
-              {room?.teamMode ? "zapnutý" : "vypnutý"}
-            </p>
+          <div className="dashboard-logo-wrapper">
+            <BrandLogo size={180} />
+            <div>
+              <p className="eyebrow">Room • {roomCode}</p>
+              <h1>🎛 Moderátorský panel</h1>
+              <p className="subtext">
+                Stav: <span style={{ color: stateColor }}>{room?.status}</span> •
+                Hráčů: {players.length} • Týmový mód:{" "}
+                {room?.teamMode ? "zapnutý" : "vypnutý"}
+              </p>
+              {eventInfo && (
+                <p className="subtext" style={{ marginTop: 4 }}>
+                  Událost: <strong>{eventInfo.name}</strong> • {eventInfo.date}
+                  {" "}
+                  <Link to={`/events/${eventInfo.id}`} className="ghost-link">
+                    otevřít detail
+                  </Link>
+                </p>
+              )}
+            </div>
           </div>
           <div className="header-actions">
             <Link to={`/`} className="ghost-btn">
@@ -752,6 +790,9 @@ export default function AdminDashboard() {
             </button>
             <button className="ghost-btn" onClick={goScoreboard}>
               📊 Scoreboard
+            </button>
+            <button className="ghost-btn" onClick={goResults}>
+              🏆 Vyhodnocení
             </button>
           </div>
         </header>
