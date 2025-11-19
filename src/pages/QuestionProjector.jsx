@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { doc, onSnapshot } from "firebase/firestore";
 import { db } from "../firebaseConfig";
-import reboosLogo from "../assets/reboos-logo.svg";
+
+// ❌ odstraněno: import reboosLogo from "../assets/reboos-logo.svg";
 
 const TYPE_LABELS = {
   abc: "Multiple choice",
@@ -143,16 +144,18 @@ export default function QuestionProjector() {
       <div className="projector-overlay">
         <header className="projector-header">
           <div className="projector-brand">
+            {/* ✔️ nové logo z public složky */}
             <img
-              src={reboosLogo}
-              alt="REBOOS logo"
+              src="/rebuss.png"
+              alt="REBUSS logo"
               className="projector-logo"
             />
             <div>
               <p className="eyebrow">Room {roomCode}</p>
-              <h1>REBOOS • Projekce otázek</h1>
+              <h1>REBUSS • Projekce otázek</h1>
             </div>
           </div>
+
           <div className="projector-status">
             <span className={`status-dot ${projectorState}`}></span>
             <span className="state-text">{projectorState}</span>
@@ -176,13 +179,17 @@ export default function QuestionProjector() {
                   <span className="pill muted">#{question.order + 1}</span>
                 )}
               </div>
+
               <h2 className="projector-title">{question.title}</h2>
+
               {question.imageUrl && (
                 <div className="projector-image">
                   <img src={question.imageUrl} alt="Obrázek otázky" />
                 </div>
               )}
+
               {renderQuestionContent()}
+
               <p className="projector-footer">
                 {room?.teamMode ? "Týmová otázka" : "Solo otázka"}
               </p>
@@ -196,8 +203,7 @@ export default function QuestionProjector() {
                   : "Zatím není aktivní žádná otázka"}
               </h2>
               <p>
-                Jakmile moderátor spustí otázku, objeví se zde automaticky pro
-                pohodlné promítání na projektor.
+                Jakmile moderátor spustí otázku, objeví se zde automaticky.
               </p>
             </div>
           )}
