@@ -467,6 +467,11 @@ export default function AdminDashboard() {
     navigate(`/scoreboard/${roomCode}`);
   };
 
+  const openProjector = () => {
+    const url = `${window.location.origin}/projector/${roomCode}`;
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
+
   const handleDragEnd = async (result) => {
     if (!result.destination) return;
 
@@ -702,6 +707,9 @@ export default function AdminDashboard() {
             >
               📚 Import banky
             </Link>
+            <button className="ghost-btn" onClick={openProjector}>
+              🎥 Projektor otázek
+            </button>
             <button className="ghost-btn" onClick={goScoreboard}>
               📊 Scoreboard
             </button>

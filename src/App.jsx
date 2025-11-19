@@ -9,6 +9,7 @@ import Scoreboard from "./pages/Scoreboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import ImportQuestions from "./pages/ImportQuestions";
 import SelectQuestions from "./pages/SelectQuestions";
+import QuestionProjector from "./pages/QuestionProjector";
 
 
 
@@ -29,6 +30,7 @@ export default function App() {
         <Route path="/lobby/:roomCode" element={<Lobby />} />
         <Route path="/game/:roomCode/:playerId" element={<Game />} />
         <Route path="/scoreboard/:roomCode" element={<Scoreboard />} />
+        <Route path="/projector/:roomCode" element={<QuestionProjector />} />
         <Route path="/import" element={<ImportQuestions />} />
         <Route path="/host/:roomCode/select-questions" element={<SelectQuestions />} />
       </Routes>
