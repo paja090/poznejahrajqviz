@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>REBOOS Question Database</title>
+  <style>
+    :root {
+      --bg: #000000;
+      --text: #ffffff;
+      --accent: #8A2BE2;
+      --card: #0f0f0f;
+      --border: #1f1f1f;
+      --easy: #22c55e;
+      --medium: #f97316;
+      --hard: #ef4444;
+      --mind: #c084fc;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.6;
+    }
+
+    h1 {
+      text-align: center;
+      margin: 0;
+      padding: 24px;
+      color: var(--accent);
+      letter-spacing: 0.05em;
+    }
+
+    .page {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 16px 48px;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      padding: 16px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 14px;
+      color: #cccccc;
+    }
+
+    select, input, textarea {
+      background: #0c0c0c;
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+
+    select:focus, input:focus, textarea:focus { outline: 1px solid var(--accent); }
+
+    button {
+      background: var(--accent);
+      color: var(--text);
+      border: none;
+      padding: 10px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: transform 0.1s ease, opacity 0.2s ease;
+    }
+
+    button:hover { opacity: 0.95; }
+    button:active { transform: translateY(1px); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--card);
+      border: 1px solid var(--border);
+      overflow: hidden;
+      border-radius: 12px;
+    }
+
+    th, td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+
+    th {
+      background: #0b0b0b;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      font-size: 12px;
+    }
+
+    tr:last-child td { border-bottom: none; }
+
+    .badge {
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      display: inline-block;
+    }
+
+    .easy { background: rgba(34, 197, 94, 0.15); color: var(--easy); border: 1px solid rgba(34, 197, 94, 0.4); }
+    .medium { background: rgba(249, 115, 22, 0.18); color: var(--medium); border: 1px solid rgba(249, 115, 22, 0.45); }
+    .hard { background: rgba(239, 68, 68, 0.18); color: var(--hard); border: 1px solid rgba(239, 68, 68, 0.4); }
+    .mind { background: rgba(192, 132, 252, 0.2); color: var(--mind); border: 1px solid rgba(192, 132, 252, 0.5); }
+
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    .table-wrap { overflow-x: auto; }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 10;
+      visibility: hidden;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+
+    .modal.open { visibility: visible; opacity: 1; }
+
+    .modal-content {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      max-width: 640px;
+      width: 100%;
+      padding: 20px;
+      position: relative;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+    }
+
+    .close {
+      position: absolute;
+      right: 12px;
+      top: 12px;
+      background: transparent;
+      border: none;
+      color: var(--text);
+      font-size: 20px;
+      cursor: pointer;
+    }
+
+    .options { display: grid; gap: 10px; margin-top: 12px; }
+    .option { padding: 10px 12px; background: #0c0c0c; border: 1px solid var(--border); border-radius: 8px; }
+    .option strong { color: var(--accent); margin-right: 6px; }
+
+    .form {
+      margin-top: 24px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+    }
+
+    .form textarea { grid-column: span 2; min-height: 80px; }
+
+    .form .full { grid-column: span 2; }
+
+    @media (max-width: 640px) {
+      th:nth-child(3), td:nth-child(3) { min-width: 240px; }
+      .form textarea, .form .full { grid-column: span 1; }
+    }
+  </style>
+</head>
+<body>
+  <h1>REBOOS Question Database</h1>
+  <div class="page">
+    <div class="controls" id="filters">
+      <label>
+        Kategorie
+        <select id="categoryFilter">
+          <option value="">Vše</option>
+        </select>
+      </label>
+      <label>
+        Obtížnost
+        <select id="difficultyFilter">
+          <option value="">Vše</option>
+          <option value="EASY">EASY</option>
+          <option value="MEDIUM">MEDIUM</option>
+          <option value="HARD">HARD</option>
+          <option value="MIND-BLOW">MIND-BLOW</option>
+        </select>
+      </label>
+      <label>
+        Trigger
+        <select id="triggerFilter">
+          <option value="">Vše</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Kategorie</th>
+            <th>Otázka</th>
+            <th>Obtížnost</th>
+            <th>Zobrazit</th>
+            <th>Kopírovat</th>
+            <th>Odpověď</th>
+          </tr>
+        </thead>
+        <tbody id="questionBody"></tbody>
+      </table>
+    </div>
+
+    <h2 style="margin: 24px 0 12px; color: #d1d5db;">Přidat novou otázku</h2>
+    <form class="form" id="questionForm">
+      <label>
+        ID (např. RQ-011)
+        <input required name="id" placeholder="RQ-011">
+      </label>
+      <label>
+        Kategorie
+        <input required name="category" placeholder="LOGIKA">
+      </label>
+      <label>
+        Obtížnost
+        <select required name="difficulty">
+          <option value="EASY">EASY</option>
+          <option value="MEDIUM">MEDIUM</option>
+          <option value="HARD">HARD</option>
+          <option value="MIND-BLOW">MIND-BLOW</option>
+        </select>
+      </label>
+      <label>
+        Trigger
+        <input required name="trigger" placeholder="EGO">
+      </label>
+      <label class="full">
+        Otázka
+        <textarea required name="question" placeholder="Text otázky"></textarea>
+      </label>
+      <label>
+        Možnost A
+        <input required name="A" placeholder="Možnost A">
+      </label>
+      <label>
+        Možnost B
+        <input required name="B" placeholder="Možnost B">
+      </label>
+      <label>
+        Možnost C
+        <input required name="C" placeholder="Možnost C">
+      </label>
+      <label>
+        Možnost D
+        <input required name="D" placeholder="Možnost D">
+      </label>
+      <label>
+        Správná odpověď
+        <select required name="correct">
+          <option value="A">A</option>
+          <option value="B">B</option>
+          <option value="C">C</option>
+          <option value="D">D</option>
+        </select>
+      </label>
+      <div style="display:flex; align-items:flex-end;">
+        <button type="submit">Uložit otázku</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="modal" id="modal">
+    <div class="modal-content">
+      <button class="close" id="closeModal" aria-label="Zavřít">×</button>
+      <div id="modalContent"></div>
+    </div>
+  </div>
+
+  <script>
+    const defaultQuestions = [
+      { id: "RQ-001", category: "LOGIKA", question: "Kolik děr má standardní americká krabička na vajíčka pro 12 kusů?", A: "6", B: "10", C: "12", D: "Žádnou", correct: "C", difficulty: "EASY", trigger: "REALITA" },
+      { id: "RQ-002", category: "PSYCHOLOGIE", question: "Jaký je název zkreslení, kdy dáváme větší váhu informacím, které si snadno vybavíme?", A: "Ukotvení", B: "Dostupnostní heuristika", C: "Potvrzovací zkreslení", D: "Efekt zpětného pohledu", correct: "B", difficulty: "MEDIUM", trigger: "PAMET" },
+      { id: "RQ-003", category: "VZTAHY", question: "Který hormon se nejvíce spojuje s pocitem důvěry a sociálního pouta?", A: "Kortizol", B: "Dopamin", C: "Oxytocin", D: "Adrenalin", correct: "C", difficulty: "EASY", trigger: "VZTAHY" },
+      { id: "RQ-004", category: "ZIVOT", question: "Jaký princip radí zaměřit se na nejdůležitější 20 % aktivit, které přinášejí 80 % výsledků?", A: "Parkinsonův zákon", B: "Paradoxon volby", C: "Pareto pravidlo", D: "Murphyho zákon", correct: "C", difficulty: "EASY", trigger: "CAS" },
+      { id: "RQ-005", category: "PENIZE", question: "Jak se nazývá efekt, kdy lidé dávají nevhodně stejnou váhu penězům v různých kontextech (např. sleva 100 Kč na levné vs. drahé zboží)?", A: "Mentální účetnictví", B: "Ztrátová averze", C: "Endowment efekt", D: "Sunk cost fallacy", correct: "A", difficulty: "MEDIUM", trigger: "REALITA" },
+      { id: "RQ-006", category: "MIND", question: "Jaké je jméno myšlenkového experimentu, kde člověk v boxu odpovídá na čínské otázky pomocí pravidel, aniž by rozuměl čínsky?", A: "Turingův test", B: "Čínský pokoj", C: "Schrödingerova kočka", D: "Mozek ve vaně", correct: "B", difficulty: "HARD", trigger: "IDENTITA" },
+      { id: "RQ-007", category: "LOGIKA", question: "Pokud dnes je středa, jaký den bude za 100 dní?", A: "Pátek", B: "Sobota", C: "Neděle", D: "Pondělí", correct: "C", difficulty: "MEDIUM", trigger: "CAS" },
+      { id: "RQ-008", category: "PSYCHOLOGIE", question: "Který efekt popisuje, že pozorování samo o sobě může změnit chování pozorovaného subjektu?", A: "Hawthorne efekt", B: "Placebo efekt", C: "Halo efekt", D: "Barnum efekt", correct: "A", difficulty: "HARD", trigger: "REALITA" },
+      { id: "RQ-009", category: "ZIVOT", question: "Jak se jmenuje pravidlo, které říká, že práce se rozšíří tak, aby zabrala veškerý dostupný čas?", A: "Pareto pravidlo", B: "Parkinsonův zákon", C: "Murphyho zákon", D: "Peter princip", correct: "B", difficulty: "EASY", trigger: "CAS" },
+      { id: "RQ-010", category: "MIND", question: "Jaký paradox upozorňuje na to, že nemůžeme určit, zda za pravdivé tvrzení považujeme něco kvůli důvěře v autoritu nebo faktickou platnost?", A: "Gettierův problém", B: "Fermiho paradox", C: "Sorites paradox", D: "Paradox autority", correct: "D", difficulty: "MIND-BLOW", trigger: "EGO" }
+    ];
+
+    const bodyEl = document.getElementById('questionBody');
+    const categoryFilter = document.getElementById('categoryFilter');
+    const difficultyFilter = document.getElementById('difficultyFilter');
+    const triggerFilter = document.getElementById('triggerFilter');
+    const modal = document.getElementById('modal');
+    const modalContent = document.getElementById('modalContent');
+    const closeModal = document.getElementById('closeModal');
+    const form = document.getElementById('questionForm');
+
+    const STORAGE_KEY = 'reboosQuestions';
+
+    function loadQuestions() {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        try {
+          return JSON.parse(stored);
+        } catch (e) {
+          console.error('Chyba při čtení localStorage', e);
+        }
+      }
+      return [...defaultQuestions];
+    }
+
+    let questions = loadQuestions();
+
+    function saveQuestions() { localStorage.setItem(STORAGE_KEY, JSON.stringify(questions)); }
+
+    function renderFilters() {
+      const categories = Array.from(new Set(questions.map(q => q.category))).sort();
+      const triggers = Array.from(new Set(questions.map(q => q.trigger))).sort();
+
+      categoryFilter.innerHTML = '<option value="">Vše</option>' + categories.map(c => `<option value="${c}">${c}</option>`).join('');
+      triggerFilter.innerHTML = '<option value="">Vše</option>' + triggers.map(t => `<option value="${t}">${t}</option>`).join('');
+    }
+
+    function difficultyClass(level) {
+      switch(level) {
+        case 'EASY': return 'easy';
+        case 'MEDIUM': return 'medium';
+        case 'HARD': return 'hard';
+        case 'MIND-BLOW': return 'mind';
+        default: return '';
+      }
+    }
+
+    function filteredQuestions() {
+      return questions.filter(q =>
+        (!categoryFilter.value || q.category === categoryFilter.value) &&
+        (!difficultyFilter.value || q.difficulty === difficultyFilter.value) &&
+        (!triggerFilter.value || q.trigger === triggerFilter.value)
+      );
+    }
+
+    function renderTable() {
+      const rows = filteredQuestions().map(q => `
+        <tr>
+          <td>${q.id}</td>
+          <td>${q.category}</td>
+          <td>${q.question}</td>
+          <td><span class="badge ${difficultyClass(q.difficulty)}">${q.difficulty}</span></td>
+          <td><button data-id="${q.id}" class="show-btn">Zobrazit</button></td>
+          <td><button data-id="${q.id}" class="copy-btn">Kopírovat</button></td>
+          <td>${q.correct}</td>
+        </tr>
+      `).join('');
+      bodyEl.innerHTML = rows || '<tr><td colspan="7" style="text-align:center; padding:20px; color:#9ca3af;">Žádné otázky</td></tr>';
+    }
+
+    function openModal(question) {
+      modalContent.innerHTML = `
+        <h3 style="margin-top:0;">${question.id} · ${question.category}</h3>
+        <p style="margin-bottom:12px;">${question.question}</p>
+        <div class="options">
+          <div class="option"><strong>A)</strong> ${question.A}</div>
+          <div class="option"><strong>B)</strong> ${question.B}</div>
+          <div class="option"><strong>C)</strong> ${question.C}</div>
+          <div class="option"><strong>D)</strong> ${question.D}</div>
+        </div>
+        <p style="margin-top:16px; color:#d1d5db;">Správná odpověď: <strong>${question.correct}</strong></p>
+      `;
+      modal.classList.add('open');
+    }
+
+    function copyQuestion(q) {
+      const text = `OTÁZKA: ${q.question}\nA) ${q.A}\nB) ${q.B}\nC) ${q.C}\nD) ${q.D}\nSPRÁVNĚ: ${q.correct}`;
+      navigator.clipboard.writeText(text).then(() => {
+        const btn = document.querySelector(`button.copy-btn[data-id="${q.id}"]`);
+        if (btn) {
+          const original = btn.textContent;
+          btn.textContent = 'Zkopírováno';
+          setTimeout(() => btn.textContent = original, 1500);
+        }
+      }).catch(err => {
+        console.error('Clipboard error', err);
+        alert('Nepodařilo se zkopírovat.');
+      });
+    }
+
+    bodyEl.addEventListener('click', (e) => {
+      const showBtn = e.target.closest('.show-btn');
+      const copyBtn = e.target.closest('.copy-btn');
+      const id = e.target.dataset.id || (showBtn && showBtn.dataset.id) || (copyBtn && copyBtn.dataset.id);
+      if (!id) return;
+      const q = questions.find(item => item.id === id);
+      if (!q) return;
+      if (showBtn) openModal(q);
+      if (copyBtn) copyQuestion(q);
+    });
+
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal || e.target === closeModal) {
+        modal.classList.remove('open');
+      }
+    });
+
+    [categoryFilter, difficultyFilter, triggerFilter].forEach(sel => sel.addEventListener('change', renderTable));
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const data = Object.fromEntries(new FormData(form).entries());
+      const exists = questions.some(q => q.id === data.id);
+      if (exists && !confirm('ID již existuje. Přepsat?')) return;
+      const newQuestion = {
+        ...data,
+        correct: data.correct,
+        difficulty: data.difficulty,
+      };
+      if (exists) {
+        questions = questions.map(q => q.id === data.id ? newQuestion : q);
+      } else {
+        questions = [...questions, newQuestion];
+      }
+      saveQuestions();
+      renderFilters();
+      renderTable();
+      form.reset();
+    });
+
+    renderFilters();
+    renderTable();
+  </script>
+</body>
+</html>
