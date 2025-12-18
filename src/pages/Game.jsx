@@ -1,4 +1,3 @@
-// pages/Game.jsx
 import { useEffect, useState, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import {
@@ -76,9 +75,7 @@ export default function Game() {
       return teams.find((t) => t.id === currentPlayer.teamId) || null;
     }
     // fallback – některé implementace můžou mít team.players[]
-    return (
-      teams.find((t) => (t.players || []).includes(playerId)) || null
-    );
+    return teams.find((t) => (t.players || []).includes(playerId)) || null;
   }, [teams, currentPlayer, playerId]);
 
   const accentColor = currentTeam?.color || playerColor;
@@ -124,13 +121,7 @@ export default function Game() {
     vibrate("send");
 
     await setDoc(
-      doc(
-        db,
-        "quizRooms",
-        roomCode,
-        "answers",
-        `${playerId}_${currentQuestionId}`
-      ),
+      doc(db, "quizRooms", roomCode, "answers", `${playerId}_${currentQuestionId}`),
       {
         playerId,
         questionId: currentQuestionId,
@@ -142,21 +133,13 @@ export default function Game() {
 
   // Evaluate + result screen
   const showResult = async (questionId) => {
-    const qSnap = await getDoc(
-      doc(db, "quizRooms", roomCode, "questions", questionId)
-    );
+    const qSnap = await getDoc(doc(db, "quizRooms", roomCode, "questions", questionId));
     if (!qSnap.exists()) return;
 
     const qData = { id: questionId, ...qSnap.data() };
 
     const ansSnap = await getDoc(
-      doc(
-        db,
-        "quizRooms",
-        roomCode,
-        "answers",
-        `${playerId}_${questionId}`
-      )
+      doc(db, "quizRooms", roomCode, "answers", `${playerId}_${questionId}`)
     );
     const ans = ansSnap.exists() ? ansSnap.data() : null;
 
@@ -170,16 +153,12 @@ export default function Game() {
 
     // SPEED QUESTION RESULT
     if (qData.type === "speed") {
-      const allSnap = await getDocs(
-        collection(db, "quizRooms", roomCode, "answers")
-      );
+      const allSnap = await getDocs(collection(db, "quizRooms", roomCode, "answers"));
       const all = allSnap.docs
         .map((d) => d.data())
         .filter((x) => x.questionId === questionId);
 
-      const sorted = all.sort(
-        (a, b) => Number(a.timeSubmitted) - Number(b.timeSubmitted)
-      );
+      const sorted = all.sort((a, b) => Number(a.timeSubmitted) - Number(b.timeSubmitted));
 
       if (sorted.length > 0) {
         r.isWinner = sorted[0].playerId === playerId;
@@ -282,9 +261,7 @@ export default function Game() {
           />
 
           {/* Waiting */}
-          {!question && (
-            <p style={styles.sub}>Čekáme na další otázku…</p>
-          )}
+          {!question && <p style={styles.sub}>Čekáme na další otázku…</p>}
 
           {/* Countdown overlay */}
           {localCountdown > 0 && (
@@ -293,12 +270,17 @@ export default function Game() {
             </div>
           )}
 
-          {/* IMAGE */}
-          {question?.type === "image" && question?.imageUrl && (
+          {/* ✅ IMAGE (FIX): zobraz vždy, když existuje imageUrl */}
+          {question?.imageUrl && (
             <img
               src={question.imageUrl}
               alt="question"
               style={styles.image}
+              loading="lazy"
+              onError={(e) => {
+                // aby to nespadlo do nekonečna, když URL selže
+                e.currentTarget.style.display = "none";
+              }}
             />
           )}
 
@@ -398,8 +380,7 @@ function TeamProgressBar({ team, teams }) {
 
   const scores = teams.map((t) => t.score ?? 0);
   const maxScore = scores.length ? Math.max(...scores) : 0;
-  const percent =
-    maxScore > 0 ? Math.round(((team.score ?? 0) / maxScore) * 100) : 0;
+  const percent = maxScore > 0 ? Math.round(((team.score ?? 0) / maxScore) * 100) : 0;
 
   return (
     <div
@@ -453,9 +434,7 @@ function AnswerUI({
   // ABC or IMAGE-ABC
   if (
     (question.type === "abc" && question.options) ||
-    (question.type === "image" &&
-      question.imageMode === "abc" &&
-      question.options)
+    (question.type === "image" && question.imageMode === "abc" && question.options)
   ) {
     return question.options.map((opt, idx) => (
       <button
@@ -470,10 +449,7 @@ function AnswerUI({
   }
 
   // OPEN or IMAGE-OPEN
-  if (
-    question.type === "open" ||
-    (question.type === "image" && question.imageMode === "open")
-  ) {
+  if (question.type === "open" || (question.type === "image" && question.imageMode === "open")) {
     return (
       <>
         <input
@@ -602,9 +578,7 @@ function AnswerUI({
           {arrangeState.order.map((originalIndex, idx) => (
             <div key={originalIndex} style={styles.arrangeItem}>
               <span style={styles.arrangeIndex}>{idx + 1}.</span>
-              <span style={styles.arrangeText}>
-                {question.options?.[originalIndex]}
-              </span>
+              <span style={styles.arrangeText}>{question.options?.[originalIndex]}</span>
               <div style={styles.arrangeControls}>
                 <button
                   type="button"
@@ -721,9 +695,7 @@ function ScoreboardUI({ players, playerId, confetti, teamColor }) {
 }
 
 function Scoreboard({ players, playerId }) {
-  const sorted = [...players].sort(
-    (a, b) => (b.score ?? 0) - (a.score ?? 0)
-  );
+  const sorted = [...players].sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
   return (
     <>
       <div style={styles.scoreboardBox}>
@@ -744,33 +716,15 @@ function Scoreboard({ players, playerId }) {
                   rank <= 3
                     ? "1px solid rgba(250,204,21,0.6)"
                     : "1px solid transparent",
-                boxShadow:
-                  rank === 1
-                    ? "0 0 18px rgba(250,204,21,0.45)"
-                    : "none",
-                background: isMe
-                  ? "rgba(59,130,246,0.3)"
-                  : "rgba(255,255,255,0.06)",
+                boxShadow: rank === 1 ? "0 0 18px rgba(250,204,21,0.45)" : "none",
+                background: isMe ? "rgba(59,130,246,0.3)" : "rgba(255,255,255,0.06)",
               }}
             >
-              <span
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                }}
-              >
+              <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 <span style={{ width: 18 }}>{badge || rank}.</span>
                 <span>{p.name}</span>
               </span>
-              <span
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  fontSize: 13,
-                }}
-              >
+              <span style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
                 <span>{p.score ?? 0} b.</span>
                 {p.color && (
                   <span
@@ -818,8 +772,7 @@ const styles = {
   title: {
     fontSize: 26,
     fontWeight: 700,
-    background:
-      "linear-gradient(45deg,#a855f7,#ec4899,#00e5a8)",
+    background: "linear-gradient(45deg,#a855f7,#ec4899,#00e5a8)",
     WebkitBackgroundClip: "text",
     color: "transparent",
   },
@@ -915,8 +868,7 @@ const styles = {
     position: "sticky",
     top: 0,
     zIndex: 10,
-    background:
-      "radial-gradient(circle at top,#020617 0,rgba(2,6,23,0.95) 60%)",
+    background: "radial-gradient(circle at top,#020617 0,rgba(2,6,23,0.95) 60%)",
   },
   headerRow: {
     fontSize: 11,
@@ -942,6 +894,7 @@ const styles = {
     alignItems: "center",
   },
 };
+
 
 
 
